@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Z80 Tools
+GenericName=Z80 Tools
+Comment=Z80 Development Tools
+Exec=<BINARY_LOCATION>
+Icon=<ICON_NAME>
+Terminal=false
+Categories=Development;IDE;

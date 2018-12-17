@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" output="bin-tests" path="src-tests"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.swt.gtk.linux.x86_64_3.104.2.v20160212-1350.jar" sourcepath="lib/org.eclipse.swt.gtk.linux.x86_64.source_3.104.2.v20160212-1350.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.commands_3.7.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.commands.source_3.7.0.v20150422-0725.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding_1.5.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.source_1.5.0.v20150422-0725.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.beans_1.3.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.beans.source_1.3.0.v20150422-0725.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.observable_1.5.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.observable.source_1.5.0.v20150422-0725.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.property_1.5.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.property.source_1.5.0.v20150422-0725.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.equinox.common_3.7.0.v20150402-1709.jar" sourcepath="lib/org.eclipse.equinox.common.source_3.7.0.v20150402-1709.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.jface_3.11.1.v20160128-1644.jar" sourcepath="lib/org.eclipse.jface.source_3.11.1.v20160128-1644.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.jface.databinding_1.7.0.v20150406-2148.jar" sourcepath="lib/org.eclipse.jface.databinding.source_1.7.0.v20150406-2148.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-annotations-2.7.0.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-core-2.7.0.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-databind-2.7.0.jar"/>
+	<classpathentry kind="lib" path="lib/jssc-2.8.0.jar" sourcepath="lib/jssc-2.8.0-src.jar"/>
+	<classpathentry kind="lib" path="lib/org.easymock_2.4.0.v20090202-0900.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
