@@ -692,27 +692,36 @@ public class SourceTest {
     }
 
     @Test
-    public void testDsVirtual() {
+    public void testDs() {
         assertArrayEquals(b(0x3E, 0x86, 0x21, 0x12, 0x00), assemble(
             " ld a,86H",
-            " ds VIRTUAL 10H",
+            " ds 10H",
             " ld hl,$"));
     }
 
-    @Test(expected = ArgumentException.class)
-    public void testDsVirtualWithFill() {
-        assemble(
-            " ds VIRTUAL 10H, 0");
-    }
-
-    @Test(expected = ArgumentException.class)
-    public void testDsUnknownAnnotation() {
-        assemble(
-            " ds UNKNOWN 10H");
+    @Test
+    public void testDsWithFill() {
+        assertArrayEquals(b(0x3E, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x0A, 0x00), assemble(
+            " ld a,86H",
+            " ds 8H, 0H",
+            " ld hl,$"));
     }
 
     @Test
-    public void testSection() {
+    public void testSectionWithFill() {
+        assertArrayEquals(b(0x00, 0x21, 0x07, 0x00, 0x21, 0x04, 0x00, 0x86, 0x86, 0x00, 0x11, 0x07, 0x00), assemble(
+            " nop",
+            "ROM: fill 8H, 86H",
+            " nop",
+            " SECTION ROM",
+            " ld hl,label",
+            " ld hl,$",
+            "label: ENDS",
+            " ld de,label"));
+    }
+
+    @Test
+    public void testSectionWithDs() {
         assertArrayEquals(b(0x00, 0x21, 0x07, 0x00, 0x21, 0x04, 0x00, 0x86, 0x86, 0x00, 0x11, 0x07, 0x00), assemble(
             " nop",
             "ROM: ds 8H, 86H",
@@ -728,7 +737,7 @@ public class SourceTest {
     public void testSectionVirtual() {
         assertArrayEquals(b(0x00, 0x00, 0x11, 0x07, 0x00), assemble(
             " nop",
-            "RAM: ds VIRTUAL 8H",
+            "RAM: ds 8H",
             " nop",
             " SECTION RAM",
             " ld hl,label",

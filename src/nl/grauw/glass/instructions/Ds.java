@@ -10,8 +10,6 @@ import java.util.List;
 import nl.grauw.glass.AssemblyException;
 import nl.grauw.glass.Scope;
 import nl.grauw.glass.expressions.Expression;
-import nl.grauw.glass.expressions.Identifier;
-import nl.grauw.glass.expressions.IntegerLiteral;
 import nl.grauw.glass.expressions.Schema;
 import nl.grauw.glass.expressions.SectionContext;
 
@@ -30,30 +28,23 @@ public class Ds extends InstructionFactory implements SectionContext {
     @Override
     public InstructionObject createObject(Scope context, Expression arguments) {
         if (ARGUMENTS_N.check(arguments)) {
-            return new Ds_N_N(context, arguments.getAnnotation(),
-                arguments.getAnnotee(), IntegerLiteral.ZERO);
+            return new Ds_N_N(context, arguments.getElement(0), null);
         }
         if (ARGUMENTS_N_N.check(arguments)) {
-            return new Ds_N_N(context, null, arguments.getElement(0), arguments.getElement(1));
+            return new Ds_N_N(context, arguments.getElement(0), arguments.getElement(1));
         }
         throw new ArgumentException();
     }
 
     public class Ds_N_N extends InstructionObject {
 
-        private final boolean virtual;
         private final Expression size;
         private final Expression value;
 
-        public Ds_N_N(Scope context, Identifier annotation, Expression size, Expression value) {
+        public Ds_N_N(Scope context, Expression size, Expression value) {
             super(context);
-            this.virtual = annotation != null && ("virtual".equals(annotation.getName()) || "VIRTUAL".equals(annotation.getName()));
             this.size = size;
             this.value = value;
-
-            if (annotation != null && !virtual) {
-                throw new ArgumentException("Unsupported annotation: " + annotation.getName());
-            }
         }
 
         @Override
@@ -78,16 +69,14 @@ public class Ds extends InstructionFactory implements SectionContext {
                     bytes.length + " bytes, available: " + size.getInteger() + " bytes).");
             }
 
-            if (virtual) {
-                return;
+            if (value != null) {
+                output.write(bytes);
+
+                byte[] padding = new byte[size.getInteger() - bytes.length];
+                Arrays.fill(padding, (byte) value.getInteger());
+
+                output.write(padding);
             }
-
-            output.write(bytes);
-
-            byte[] padding = new byte[size.getInteger() - bytes.length];
-            Arrays.fill(padding, (byte) value.getInteger());
-
-            output.write(padding);
         }
 
         public byte[] getSectionBytes() throws IOException {
@@ -100,7 +89,7 @@ public class Ds extends InstructionFactory implements SectionContext {
 
         @Override
         public byte[] getBytes() {
-            if (virtual) {
+            if (value == null) {
                 return new byte[] {};
             }
             byte[] bytes = new byte[size.getInteger()];

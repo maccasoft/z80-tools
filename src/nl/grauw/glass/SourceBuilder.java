@@ -16,6 +16,7 @@ import java.util.List;
 import nl.grauw.glass.directives.Directive;
 import nl.grauw.glass.directives.Ds;
 import nl.grauw.glass.directives.Equ;
+import nl.grauw.glass.directives.Fill;
 import nl.grauw.glass.directives.If;
 import nl.grauw.glass.directives.Incbin;
 import nl.grauw.glass.directives.Include;
@@ -221,6 +222,11 @@ public class SourceBuilder {
                     throw new AssemblyException("Unexpected " + line.getMnemonic() + ".");
                 }
                 return new Instruction();
+            case "fill":
+            case "FILL":
+            case ".fill":
+            case ".FILL":
+                return new Fill();
             default:
                 return new Instruction();
         }
