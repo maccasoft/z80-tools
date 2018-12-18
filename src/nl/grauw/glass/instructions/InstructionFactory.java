@@ -8,13 +8,13 @@ import nl.grauw.glass.Scope;
 import nl.grauw.glass.expressions.Expression;
 
 public abstract class InstructionFactory {
-	
-	public List<Line> expand(Line line) {
-		List<Line> lines = new ArrayList<Line>();
-		lines.add(line);
-		return lines;
-	}
-	
-	public abstract InstructionObject createObject(Scope context, Expression arguments);
-	
+
+    public List<Line> expand(Line line) {
+        List<Line> lines = new ArrayList<Line>();
+        lines.add(line);
+        return lines;
+    }
+
+    public abstract InstructionObject createObject(Scope context, Expression arguments);
+
 }
