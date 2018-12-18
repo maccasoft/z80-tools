@@ -132,8 +132,8 @@ public class SourceBuilder {
             }
 
             try {
-                line.setDirective(getDirective(line, reader, sourceFile));
                 source.addLine(line);
+                line.setDirective(getDirective(line, reader, sourceFile));
                 if (line.getMnemonic() != null && terminators.contains(line.getMnemonic())) {
                     return source;
                 }
