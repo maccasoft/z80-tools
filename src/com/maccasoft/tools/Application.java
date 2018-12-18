@@ -10,6 +10,8 @@
 
 package com.maccasoft.tools;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -86,6 +88,8 @@ public class Application {
     CTabFolder tabFolder;
     Console console;
 
+    SerialTerminal terminal;
+
     Preferences preferences;
 
     public Application() {
@@ -146,6 +150,10 @@ public class Application {
 
             @Override
             public void widgetDisposed(DisposeEvent e) {
+                if (terminal != null) {
+                    terminal.dispose();
+                    terminal = null;
+                }
                 try {
                     preferences.save();
                 } catch (IOException e1) {
@@ -497,7 +505,11 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    handleOpenTerminal();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
     }
@@ -1096,6 +1108,31 @@ public class Application {
         }
 
         return sb.toString();
+    }
+
+    private void handleOpenTerminal() {
+        if (terminal == null) {
+            terminal = new SerialTerminal();
+            terminal.setPort(preferences.getSerialPort());
+            terminal.setBaud(preferences.getSerialBaud());
+            terminal.addPropertyChangeListener(new PropertyChangeListener() {
+
+                @Override
+                public void propertyChange(PropertyChangeEvent evt) {
+                    preferences.setSerialPort(terminal.getPort());
+                    preferences.setSerialBaud(terminal.getBaud());
+                }
+            });
+            terminal.open();
+            terminal.getShell().addDisposeListener(new DisposeListener() {
+
+                @Override
+                public void widgetDisposed(DisposeEvent e) {
+                    terminal = null;
+                }
+            });
+        }
+        terminal.setFocus();
     }
 
     static {

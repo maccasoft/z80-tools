@@ -26,6 +26,8 @@ public class Preferences {
 
     public static final String PROP_LRU = "lru";
     public static final String PROP_LASTPATH = "lastPath";
+    public static final String PROP_SERIAL_PORT = "serialPort";
+    public static final String PROP_SERIAL_BAUD = "serialBaud";
 
     public static final String PREFERENCES_NAME = ".z80-tools";
 
@@ -53,12 +55,15 @@ public class Preferences {
     }
 
     String lastPath;
+    String serialPort;
+    int serialBaud;
     List<String> lru;
 
     final PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
 
     Preferences() {
         lru = new ArrayList<String>();
+        serialBaud = 115200;
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
@@ -101,6 +106,22 @@ public class Preferences {
     public void removeLru(File file) {
         lru.remove(file.getAbsolutePath());
         changeSupport.firePropertyChange(PROP_LRU, null, this.lru);
+    }
+
+    public String getSerialPort() {
+        return serialPort;
+    }
+
+    public void setSerialPort(String serialPort) {
+        changeSupport.firePropertyChange(PROP_SERIAL_PORT, this.serialPort, this.serialPort = serialPort);
+    }
+
+    public int getSerialBaud() {
+        return serialBaud;
+    }
+
+    public void setSerialBaud(int serialBaud) {
+        changeSupport.firePropertyChange(PROP_SERIAL_BAUD, this.serialBaud, this.serialBaud = serialBaud);
     }
 
     public void save() throws IOException {
