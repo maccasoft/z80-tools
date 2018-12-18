@@ -783,6 +783,14 @@ public class SourceTest {
             " ENDS");
     }
 
+    @Test
+    public void testFill() {
+        assertArrayEquals(b(0x3E, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x0A, 0x00), assemble(
+            " ld a,86H",
+            " fill 8H,0H",
+            " ld hl,$"));
+    }
+
     public byte[] assemble(String... sourceLines) {
         StringBuilder builder = new StringBuilder();
         for (String lineText : sourceLines) {

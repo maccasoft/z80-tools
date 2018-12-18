@@ -33,6 +33,7 @@ import nl.grauw.glass.instructions.Equ;
 import nl.grauw.glass.instructions.Error;
 import nl.grauw.glass.instructions.Ex;
 import nl.grauw.glass.instructions.Exx;
+import nl.grauw.glass.instructions.Fill;
 import nl.grauw.glass.instructions.Halt;
 import nl.grauw.glass.instructions.Im;
 import nl.grauw.glass.instructions.In;
@@ -106,13 +107,9 @@ public class GlobalScope extends Scope {
         addBuiltInSymbol("cpir", new Instruction(new Cpir()));
         addBuiltInSymbol("cpl", new Instruction(new Cpl()));
         addBuiltInSymbol("daa", new Instruction(new Daa()));
-        addBuiltInSymbol("db", new Instruction(new Db()));
-        addBuiltInSymbol("dd", new Instruction(new Dd()));
         addBuiltInSymbol("dec", new Instruction(new Dec()));
         addBuiltInSymbol("di", new Instruction(new Di()));
         addBuiltInSymbol("djnz", new Instruction(new Djnz()));
-        addBuiltInSymbol("ds", new Instruction(new Ds()));
-        addBuiltInSymbol("dw", new Instruction(new Dw()));
         addBuiltInSymbol("ei", new Instruction(new Ei()));
         addBuiltInSymbol("ex", new Instruction(new Ex()));
         addBuiltInSymbol("exx", new Instruction(new Exx()));
@@ -167,6 +164,13 @@ public class GlobalScope extends Scope {
         addBuiltInSymbol("sub", new Instruction(new Sub()));
         addBuiltInSymbol("xor", new Instruction(new Xor()));
 
+        addBuiltInSymbol("db", new Instruction(new Db()));
+        addBuiltInSymbol("dd", new Instruction(new Dd()));
+        addBuiltInSymbol("ds", new Instruction(new Ds()));
+        addBuiltInSymbol("dw", new Instruction(new Dw()));
+        addBuiltInSymbol("byte", new Instruction(new Db()));
+        addBuiltInSymbol("word", new Instruction(new Dw()));
+
         addBuiltInSymbol("include", new Instruction(new Include()));
         addBuiltInSymbol("equ", new Instruction(new Equ()));
         addBuiltInSymbol("org", new Instruction(new Org()));
@@ -178,6 +182,27 @@ public class GlobalScope extends Scope {
         addBuiltInSymbol("else", new Instruction(new Else()));
         addBuiltInSymbol("error", new Instruction(new Error()));
         addBuiltInSymbol("warning", new Instruction(new Warning()));
+        addBuiltInSymbol("fill", new Instruction(new Fill()));
+
+        addBuiltInSymbol(".db", new Instruction(new Db()));
+        addBuiltInSymbol(".dd", new Instruction(new Dd()));
+        addBuiltInSymbol(".ds", new Instruction(new Ds()));
+        addBuiltInSymbol(".dw", new Instruction(new Dw()));
+        addBuiltInSymbol(".byte", new Instruction(new Db()));
+        addBuiltInSymbol(".word", new Instruction(new Dw()));
+
+        addBuiltInSymbol(".include", new Instruction(new Include()));
+        addBuiltInSymbol(".equ", new Instruction(new Equ()));
+        addBuiltInSymbol(".org", new Instruction(new Org()));
+        addBuiltInSymbol(".endm", new Instruction(new Endm()));
+        addBuiltInSymbol(".endp", new Instruction(new Endp()));
+        addBuiltInSymbol(".ends", new Instruction(new Ends()));
+        addBuiltInSymbol(".end", new Instruction(new End()));
+        addBuiltInSymbol(".endif", new Instruction(new Endif()));
+        addBuiltInSymbol(".else", new Instruction(new Else()));
+        addBuiltInSymbol(".error", new Instruction(new Error()));
+        addBuiltInSymbol(".warning", new Instruction(new Warning()));
+        addBuiltInSymbol(".fill", new Instruction(new Fill()));
     }
 
     private void addBuiltInSymbol(String symbol, Expression value) {

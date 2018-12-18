@@ -155,35 +155,55 @@ public class SourceBuilder {
         switch (line.getMnemonic()) {
             case "equ":
             case "EQU":
+            case ".equ":
+            case ".EQU":
                 return new Equ();
             case "include":
             case "INCLUDE":
+            case ".include":
+            case ".INCLUDE":
                 return getIncludeDirective(line, sourceFile);
             case "incbin":
             case "INCBIN":
+            case ".incbin":
+            case ".INCBIN":
                 return new Incbin(sourceFile, includePaths);
             case "macro":
             case "MACRO":
+            case ".macro":
+            case ".MACRO":
                 return new Macro(parseBlock(line.getScope(), ENDM_TERMINATORS, reader, sourceFile));
             case "rept":
             case "REPT":
+            case ".rept":
+            case ".REPT":
                 return new Rept(parseBlock(line.getScope(), ENDM_TERMINATORS, reader, sourceFile));
             case "irp":
             case "IRP":
+            case ".irp":
+            case ".IRP":
                 return new Irp(parseBlock(line.getScope(), ENDM_TERMINATORS, reader, sourceFile));
             case "proc":
             case "PROC":
+            case ".proc":
+            case ".PROC":
                 return new Proc(parseBlock(line.getScope(), ENDP_TERMINATORS, reader, sourceFile));
             case "if":
             case "IF":
+            case ".if":
+            case ".IF":
                 Source thenBlock = parseBlock(source.getScope(), ELSE_TERMINATORS, reader, sourceFile);
                 Source elseBlock = !ENDIF_TERMINATORS.contains(thenBlock.getLastLine().getMnemonic()) ? parseBlock(source.getScope(), ENDIF_TERMINATORS, reader, sourceFile) : null;
                 return new If(thenBlock, elseBlock);
             case "section":
             case "SECTION":
+            case ".section":
+            case ".SECTION":
                 return new Section(parseBlock(source.getScope(), ENDS_TERMINATORS, reader, sourceFile));
             case "ds":
             case "DS":
+            case ".ds":
+            case ".DS":
                 return new Ds();
             case "endm":
             case "ENDM":
@@ -191,6 +211,12 @@ public class SourceBuilder {
             case "ENDP":
             case "ends":
             case "ENDS":
+            case ".endm":
+            case ".ENDM":
+            case ".endp":
+            case ".ENDP":
+            case ".ends":
+            case ".ENDS":
                 if (!terminators.contains(line.getMnemonic())) {
                     throw new AssemblyException("Unexpected " + line.getMnemonic() + ".");
                 }
