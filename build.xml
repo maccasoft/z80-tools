@@ -224,6 +224,8 @@
 
         <copy todir="${work}/${folder}">
             <fileset file="LICENSE"/>
+            <fileset file="LICENSE.glass"/>
+            <fileset file="NOTICE.glass"/>
         </copy>
     </target>
 
