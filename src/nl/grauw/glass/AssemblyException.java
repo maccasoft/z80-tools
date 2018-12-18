@@ -7,7 +7,7 @@ import java.util.List;
 public class AssemblyException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
-    private final List<Context> contexts = new ArrayList<>();
+    public final List<Context> contexts = new ArrayList<>();
 
     public AssemblyException() {
         this((Throwable) null);
@@ -48,12 +48,12 @@ public class AssemblyException extends RuntimeException {
         return super.getMessage();
     }
 
-    private static class Context {
+    public static class Context {
 
-        private final File file;
-        private final int line;
-        private final int column;
-        private final String text;
+        public final File file;
+        public final int line;
+        public final int column;
+        public final String text;
 
         public Context(File file, int line, int column, String text) {
             this.file = file;
