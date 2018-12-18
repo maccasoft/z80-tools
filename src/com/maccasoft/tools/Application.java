@@ -11,14 +11,20 @@
 package com.maccasoft.tools;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -36,6 +42,7 @@ import org.eclipse.swt.custom.CTabFolder2Adapter;
 import org.eclipse.swt.custom.CTabFolderEvent;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.MenuEvent;
@@ -45,6 +52,7 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -59,6 +67,11 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.maccasoft.tools.internal.ImageRegistry;
 
+import nl.grauw.glass.AssemblyException;
+import nl.grauw.glass.Line;
+import nl.grauw.glass.Source;
+import nl.grauw.glass.SourceBuilder;
+
 public class Application {
 
     public static final String APP_TITLE = "Z80 Tools";
@@ -67,9 +80,11 @@ public class Application {
     Display display;
     Shell shell;
 
-    SashForm sashForm;
+    SashForm sashForm1;
     FileBrowser browser;
+    SashForm sashForm2;
     CTabFolder tabFolder;
+    Console console;
 
     Preferences preferences;
 
@@ -101,7 +116,7 @@ public class Application {
 
         Rectangle screen = display.getClientArea();
 
-        Rectangle rect = new Rectangle(0, 0, (int) ((float) screen.width / (float) screen.height * 800), 800);
+        Rectangle rect = new Rectangle(0, 0, (int) ((float) screen.width / (float) screen.height * 800), 850);
         rect.x = (screen.width - rect.width) / 2;
         rect.y = (screen.height - rect.height) / 2;
         if (rect.y < 0) {
@@ -455,7 +470,11 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    handleCompile();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
 
@@ -507,15 +526,18 @@ public class Application {
         FontMetrics fontMetrics = gc.getFontMetrics();
         gc.dispose();
 
-        sashForm = new SashForm(parent, SWT.HORIZONTAL);
-        sashForm.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        sashForm1 = new SashForm(parent, SWT.HORIZONTAL);
+        sashForm1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        browser = new FileBrowser(sashForm);
+        browser = new FileBrowser(sashForm1);
         browser.setRoots(new File[] {
             new File(System.getProperty("user.home"))
         });
 
-        tabFolder = new CTabFolder(sashForm, SWT.BORDER);
+        sashForm2 = new SashForm(sashForm1, SWT.VERTICAL);
+        sashForm2.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        tabFolder = new CTabFolder(sashForm2, SWT.BORDER);
         tabFolder.setTabHeight((int) (fontMetrics.getHeight() * 1.5));
         tabFolder.addSelectionListener(new SelectionAdapter() {
 
@@ -533,8 +555,78 @@ public class Application {
             }
         });
 
-        sashForm.setWeights(new int[] {
+        console = new Console(sashForm2);
+        console.getStyledText().addListener(SWT.MouseDown, new Listener() {
+
+            @Override
+            public void handleEvent(Event event) {
+                try {
+                    StyledText control = (StyledText) event.widget;
+                    int offset = control.getOffsetAtLocation(new Point(event.x, event.y));
+                    String line = control.getLine(control.getLineAtOffset(offset));
+                    if (line.toLowerCase().contains(" error : ")) {
+                        int s = 0;
+                        int e = line.indexOf(')');
+                        if (e != -1) {
+                            line = line.substring(s, e + 1);
+
+                            s = 0;
+                            e = line.indexOf('(');
+                            String name = line.substring(s, e);
+                            s = e + 1;
+                            if ((e = line.indexOf(':', s)) == -1) {
+                                e = line.indexOf(',', s);
+                            }
+                            int row = Integer.parseInt(line.substring(s, e)) - 1;
+                            if (row < 0) {
+                                row = 0;
+                            }
+                            s = e + 1;
+                            e = line.indexOf(')', s);
+                            int column = Integer.parseInt(line.substring(s, e)) - 1;
+                            if (column < 0) {
+                                column = 0;
+                            }
+                            switchToEditor(name, row, column);
+                        }
+                    }
+                    else if (line.toLowerCase().contains(" error: ") || line.toLowerCase().contains(" warning: ")) {
+                        int e = line.indexOf(':');
+                        String name = line.substring(0, e);
+                        int s = e + 1;
+                        e = line.indexOf(':', s);
+                        int row = Integer.parseInt(line.substring(s, e)) - 1;
+                        s = e + 1;
+                        int column = 0;
+                        if (line.charAt(s) != ' ') {
+                            e = line.indexOf(':', s);
+                            column = Integer.parseInt(line.substring(s, e)) - 1;
+                        }
+                        switchToEditor(name, row, column);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            void switchToEditor(String name, int line, int column) {
+                CTabItem[] tabItem = tabFolder.getItems();
+                for (int i = 0; i < tabItem.length; i++) {
+                    SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+                    if (name.equalsIgnoreCase(tab.getText())) {
+                        tab.getEditor().gotToLineColumn(line, column);
+                        tab.setFocus();
+                        break;
+                    }
+                }
+            }
+        });
+
+        sashForm1.setWeights(new int[] {
             20, 80
+        });
+        sashForm2.setWeights(new int[] {
+            80, 20
         });
 
         String lastPath = preferences.getLastPath();
@@ -783,6 +875,227 @@ public class Application {
             tab.clearDirty();
         }
         return true;
+    }
+
+    private void handleCompile() throws Exception {
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+        console.clear();
+        console.getOutputStream().write(new String("Compiling " + tab.getText() + "...").getBytes());
+
+        List<File> includePaths = new ArrayList<File>();
+        if (tab.getFile() != null) {
+            includePaths.add(tab.getFile().getParentFile());
+        }
+        final SourceBuilder builder = new SourceBuilder(includePaths);
+
+        final StringReader reader = new StringReader(tab.getEditor().getText());
+
+        final String name = tab.getText();
+        final File file = tab.getFile();
+
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                compile(builder, reader, name, file);
+            }
+        }).start();
+    }
+
+    Source compile(SourceBuilder builder, Reader reader, String name, File file) {
+        PrintStream out = new PrintStream(console.getOutputStream());
+        PrintStream err = new PrintStream(console.getErrorStream());
+        try {
+            Source source = builder.parse(reader, new File(name));
+            source.register();
+            source.expand();
+            source.resolve();
+
+            if (file != null) {
+                String baseName = name;
+                if (baseName.indexOf('.') != -1) {
+                    baseName = baseName.substring(0, baseName.lastIndexOf('.'));
+                }
+
+                OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".LST")));
+                os.write(buildListing(new ArrayList<Line>(source.getLines())).toString());
+                os.close();
+
+                os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".HEX")));
+                os.write(buildIntelHexString(new ArrayList<Line>(source.getLines())).toString());
+                os.close();
+            }
+
+            int lower = Integer.MAX_VALUE;
+            int higher = Integer.MIN_VALUE;
+            for (Line line : source.getLines()) {
+                if (line.getSize() != 0) {
+                    lower = Math.min(lower, line.getScope().getAddress());
+                    higher = Math.max(higher, line.getScope().getAddress());
+                }
+            }
+            out.println();
+            out.println(String.format("Compiled %d lines from %04XH to %04XH (%d bytes)", source.getLines().size(), lower, higher, higher - lower + 1));
+
+            return source;
+
+        } catch (AssemblyException ex) {
+            StringBuilder sb = new StringBuilder();
+
+            Iterator<AssemblyException.Context> iter = ex.contexts.iterator();
+            if (iter.hasNext()) {
+                AssemblyException.Context context = iter.next();
+                sb.append(context.file.getName());
+                sb.append(":");
+                sb.append(context.line + 1);
+                if (context.column != -1) {
+                    sb.append(":");
+                    sb.append(context.column);
+                }
+                sb.append(": error: ");
+                sb.append(ex.getPlainMessage());
+            }
+
+            out.println();
+            err.println(sb.toString());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    StringBuilder buildListing(List<Line> lines) throws IOException {
+        int column;
+        StringBuilder sb = new StringBuilder();
+
+        for (Line line : lines) {
+            try {
+                int address = line.getScope().getAddress();
+                byte[] code = line.getBytes();
+
+                sb.append(String.format("%05d  %04X ", line.getLineNumber() + 1, address));
+
+                column = 0;
+                int codeIndex = 0;
+                for (int i = 0; codeIndex < code.length && (column + 3) < 24; i++, codeIndex++, address++) {
+                    if (i != 0) {
+                        sb.append(' ');
+                        column++;
+                    }
+                    sb.append(String.format("%02X", code[codeIndex]));
+                    column += 2;
+                }
+                while (column < 24 + 1) {
+                    sb.append(' ');
+                    column++;
+                }
+
+                sb.append(line.getSourceText());
+
+                while (codeIndex < code.length) {
+                    sb.append("\r\n");
+                    sb.append(String.format("%05d  %04X ", line.getLineNumber() + 1, address));
+
+                    column = 0;
+                    for (int i = 0; codeIndex < code.length && (column + 3) < 24; i++, codeIndex++, address++) {
+                        if (i != 0) {
+                            sb.append(' ');
+                            column++;
+                        }
+                        sb.append(String.format("%02X", code[codeIndex]));
+                        column += 2;
+                    }
+                }
+
+                sb.append("\r\n");
+            } catch (AssemblyException e) {
+                e.addContext(line);
+                throw e;
+            }
+        }
+
+        return sb;
+    }
+
+    StringBuilder buildIntelHexString(List<Line> lines) throws IOException {
+        int addr = -1;
+        int nextAddr = -1;
+        StringBuilder sb = new StringBuilder();
+
+        Collections.sort(lines, new Comparator<Line>() {
+
+            @Override
+            public int compare(Line o1, Line o2) {
+                return o1.getScope().getAddress() - o2.getScope().getAddress();
+            }
+        });
+
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        for (Line line : lines) {
+            try {
+                byte[] code = line.getBytes();
+                if (code.length == 0) {
+                    continue;
+                }
+                if (line.getScope().getAddress() != nextAddr) {
+                    os.close();
+
+                    byte[] data = os.toByteArray();
+                    if (data.length != 0) {
+                        sb.append(toHexString(addr, data));
+                    }
+
+                    nextAddr = addr = line.getScope().getAddress();
+                    os = new ByteArrayOutputStream();
+                }
+                os.write(code);
+                nextAddr += code.length;
+            } catch (AssemblyException e) {
+                e.addContext(line);
+                throw e;
+            }
+        }
+
+        os.close();
+        byte[] data = os.toByteArray();
+        if (data.length != 0) {
+            sb.append(toHexString(addr, data));
+        }
+
+        sb.append(":00000001FF\r\n");
+
+        return sb;
+    }
+
+    static String toHexString(int addr, byte[] data) {
+        StringBuilder sb = new StringBuilder();
+
+        int i = 0;
+
+        while ((data.length - i) > 0) {
+            int l = data.length - i;
+            if (l > 24) {
+                l = 24;
+            }
+            sb.append(String.format(":%02X%04X%02X", l, addr, 0));
+
+            int checksum = l + (addr & 0xFF) + ((addr >> 8) & 0xFF) + 0;
+            for (int n = 0; n < l; n++, i++, addr++) {
+                sb.append(String.format("%02X", data[i]));
+                checksum += data[i];
+            }
+
+            sb.append(String.format("%02X\r\n", (-checksum) & 0xFF));
+        }
+
+        return sb.toString();
     }
 
     static {
