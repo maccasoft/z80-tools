@@ -1,5 +1,8 @@
 package nl.grauw.glass;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import nl.grauw.glass.expressions.Expression;
 import nl.grauw.glass.expressions.Instruction;
 import nl.grauw.glass.instructions.Adc;
@@ -89,6 +92,8 @@ import nl.grauw.glass.instructions.Warning;
 import nl.grauw.glass.instructions.Xor;
 
 public class GlobalScope extends Scope {
+
+    private final Map<String, Expression> builtInSymbols = new HashMap<>();
 
     public GlobalScope() {
         super();
@@ -205,9 +210,24 @@ public class GlobalScope extends Scope {
         addBuiltInSymbol(".fill", new Instruction(new Fill()));
     }
 
-    private void addBuiltInSymbol(String symbol, Expression value) {
-        addSymbol(symbol, value);
-        addSymbol(symbol.toUpperCase(), value);
+    public void addBuiltInSymbol(String name, Expression value) {
+        if (name == null || value == null) {
+            throw new AssemblyException("Symbol name and value must not be null.");
+        }
+        if (builtInSymbols.containsKey(name)) {
+            throw new AssemblyException("Can not redefine symbol: " + name);
+        }
+        builtInSymbols.put(name, value);
+        builtInSymbols.put(name.toUpperCase(), value);
+    }
+
+    @Override
+    protected Expression getLocalSymbol(String name) {
+        Expression value = super.getLocalSymbol(name);
+        if (value == null) {
+            value = builtInSymbols.get(name);
+        }
+        return value;
     }
 
 }

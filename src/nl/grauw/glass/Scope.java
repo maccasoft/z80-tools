@@ -76,7 +76,7 @@ public class Scope implements Context {
         throw new SymbolNotFoundException(name);
     }
 
-    private Expression getLocalSymbol(String name) {
+    protected Expression getLocalSymbol(String name) {
         Expression value = symbols.get(name);
         if (value != null) {
             return value;
