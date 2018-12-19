@@ -171,4 +171,7 @@ public class FileBrowser {
         viewer.removeOpenListener(l);
     }
 
+    public void setFocus() {
+        viewer.getControl().setFocus();
+    }
 }

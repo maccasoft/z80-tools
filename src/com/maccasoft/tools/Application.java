@@ -56,9 +56,10 @@ import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
@@ -66,6 +67,8 @@ import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
 
 import com.maccasoft.tools.internal.ImageRegistry;
 
@@ -132,11 +135,15 @@ public class Application {
         shell.setLocation(rect.x, rect.y);
         shell.setSize(rect.width, rect.height);
 
-        FillLayout layout = new FillLayout();
+        GridLayout layout = new GridLayout(1, false);
         layout.marginWidth = layout.marginHeight = 5;
         shell.setLayout(layout);
 
-        createContents(shell);
+        Control control = createToolbar(shell);
+        control.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        control = createContents(shell);
+        control.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         shell.open();
 
@@ -179,34 +186,11 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-                SourceEditorTab tab = new SourceEditorTab(tabFolder, "");
-                tab.setText(getDefaultName());
-                tab.setFocus();
-            }
-
-            String getDefaultName() {
-                Date date = new Date();
-                SimpleDateFormat df = new SimpleDateFormat("MMMdd");
-
-                for (char c = 'a'; c <= 'z'; c++) {
-                    String result = String.format("%s%c.asm", df.format(date), c);
-                    File file = new File(result);
-                    if (!file.exists() && !nameExists(result)) {
-                        return result;
-                    }
+                try {
+                    handleFileNew();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
                 }
-
-                return null;
-            }
-
-            boolean nameExists(String name) {
-                CTabItem[] tabItem = tabFolder.getItems();
-                for (int n = 0; n < tabItem.length; n++) {
-                    if (name.equals(tabItem[n].getText())) {
-                        return true;
-                    }
-                }
-                return false;
             }
         });
 
@@ -538,7 +522,107 @@ public class Application {
         });
     }
 
-    protected void createContents(Composite parent) {
+    ToolBar createToolbar(Composite parent) {
+        ToolBar toolBar = new ToolBar(parent, SWT.FLAT);
+
+        ToolItem toolItem = new ToolItem(toolBar, SWT.PUSH);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_verify.png"));
+        toolItem.setToolTipText("Verify / Compile");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    handleCompile();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        toolItem = new ToolItem(toolBar, SWT.PUSH);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_go.png"));
+        toolItem.setToolTipText("Upload Intel HEX");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    handleCompileAndUploadIntelHex();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new ToolItem(toolBar, SWT.SEPARATOR);
+
+        toolItem = new ToolItem(toolBar, SWT.PUSH);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_xp_terminal.png"));
+        toolItem.setToolTipText("Serial Terminal");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    handleOpenTerminal();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new ToolItem(toolBar, SWT.SEPARATOR);
+
+        toolItem = new ToolItem(toolBar, SWT.PUSH);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_add.png"));
+        toolItem.setToolTipText("New");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    handleFileNew();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        toolItem = new ToolItem(toolBar, SWT.PUSH);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_get.png"));
+        toolItem.setToolTipText("Open");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    handleFileOpen();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        toolItem = new ToolItem(toolBar, SWT.PUSH);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_put.png"));
+        toolItem.setToolTipText("Save");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    handleFileSave();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        return toolBar;
+    }
+
+    protected Control createContents(Composite parent) {
         GC gc = new GC(parent);
         FontMetrics fontMetrics = gc.getFontMetrics();
         gc.dispose();
@@ -676,6 +760,41 @@ public class Application {
                 }
             }
         });
+
+        browser.setFocus();
+
+        return sashForm1;
+    }
+
+    private void handleFileNew() {
+        SourceEditorTab tab = new SourceEditorTab(tabFolder, "");
+        tab.setText(getDefaultName());
+        tab.setFocus();
+    }
+
+    String getDefaultName() {
+        Date date = new Date();
+        SimpleDateFormat df = new SimpleDateFormat("MMMdd");
+
+        for (char c = 'a'; c <= 'z'; c++) {
+            String result = String.format("%s%c.asm", df.format(date), c);
+            File file = new File(result);
+            if (!file.exists() && !nameExists(result)) {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    boolean nameExists(String name) {
+        CTabItem[] tabItem = tabFolder.getItems();
+        for (int n = 0; n < tabItem.length; n++) {
+            if (name.equals(tabItem[n].getText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void handleFileOpen() {
