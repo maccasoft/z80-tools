@@ -69,6 +69,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.maccasoft.tools.internal.ImageRegistry;
 
+import jssc.SerialPort;
 import nl.grauw.glass.AssemblyException;
 import nl.grauw.glass.Line;
 import nl.grauw.glass.Source;
@@ -492,7 +493,11 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    handleCompileAndUploadIntelHex();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
 
@@ -897,7 +902,9 @@ public class Application {
         SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
 
         console.clear();
-        console.getOutputStream().write(new String("Compiling " + tab.getText() + "...").getBytes());
+
+        PrintStream out = new PrintStream(console.getOutputStream());
+        out.print("Compiling " + tab.getText() + "...");
 
         List<File> includePaths = new ArrayList<File>();
         if (tab.getFile() != null) {
@@ -922,6 +929,7 @@ public class Application {
     Source compile(SourceBuilder builder, Reader reader, String name, File file) {
         PrintStream out = new PrintStream(console.getOutputStream());
         PrintStream err = new PrintStream(console.getErrorStream());
+
         try {
             Source source = builder.parse(reader, new File(name));
             source.register();
@@ -1133,6 +1141,65 @@ public class Application {
             });
         }
         terminal.setFocus();
+    }
+
+    private void handleCompileAndUploadIntelHex() throws Exception {
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+        console.clear();
+
+        final PrintStream out = new PrintStream(console.getOutputStream());
+        out.print("Compiling " + tab.getText() + "...");
+
+        List<File> includePaths = new ArrayList<File>();
+        if (tab.getFile() != null) {
+            includePaths.add(tab.getFile().getParentFile());
+        }
+        final SourceBuilder builder = new SourceBuilder(includePaths);
+
+        final StringReader reader = new StringReader(tab.getEditor().getText());
+
+        final String name = tab.getText();
+        final File file = tab.getFile();
+
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    Source source = compile(builder, reader, name, file);
+                    if (source == null) {
+                        return;
+                    }
+
+                    display.asyncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            handleOpenTerminal();
+                        }
+                    });
+
+                    SerialPort serialPort = terminal.getSerialPort();
+
+                    out.println("Sending to serial port " + serialPort.getPortName() + " ...");
+
+                    StringBuilder sb = buildIntelHexString(new ArrayList<Line>(source.getLines()));
+                    for (int i = 0; i < sb.length(); i++) {
+                        serialPort.writeInt(sb.charAt(i));
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                out.println("Done");
+            }
+        }).start();
+
     }
 
     static {
