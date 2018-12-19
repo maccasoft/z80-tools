@@ -32,6 +32,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.core.databinding.observable.Realm;
+import org.eclipse.core.databinding.observable.value.IValueChangeListener;
+import org.eclipse.core.databinding.observable.value.ValueChangeEvent;
+import org.eclipse.core.databinding.observable.value.WritableValue;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.databinding.swt.DisplayRealm;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -43,6 +47,8 @@ import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabFolder2Adapter;
 import org.eclipse.swt.custom.CTabFolderEvent;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.custom.CaretEvent;
+import org.eclipse.swt.custom.CaretListener;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.DisposeEvent;
@@ -91,10 +97,25 @@ public class Application {
     SashForm sashForm2;
     CTabFolder tabFolder;
     Console console;
+    StatusLine statusLine;
 
     SerialTerminal terminal;
 
     Preferences preferences;
+
+    WritableValue tabFolderSelection;
+
+    final CaretListener caretListener = new CaretListener() {
+
+        @Override
+        public void caretMoved(CaretEvent event) {
+            StyledText text = (StyledText) event.widget;
+            int offset = text.getCaretOffset();
+            int y = text.getLineAtOffset(offset);
+            int x = offset - text.getOffsetAtLine(y);
+            statusLine.setCaretPosition(String.format("%d : %d ", y + 1, x + 1));
+        }
+    };
 
     public Application() {
         preferences = Preferences.getInstance();
@@ -144,6 +165,9 @@ public class Application {
 
         control = createContents(shell);
         control.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        statusLine = new StatusLine(shell);
+        statusLine.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         shell.open();
 
@@ -638,21 +662,47 @@ public class Application {
         sashForm2 = new SashForm(sashForm1, SWT.VERTICAL);
         sashForm2.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        tabFolder = new CTabFolder(sashForm2, SWT.BORDER);
-        tabFolder.setTabHeight((int) (fontMetrics.getHeight() * 1.5));
-        tabFolder.addSelectionListener(new SelectionAdapter() {
+        tabFolder = new CTabFolder(sashForm2, SWT.BORDER) {
 
             @Override
-            public void widgetSelected(SelectionEvent e) {
-
+            public void setSelection(int index) {
+                super.setSelection(index);
+                CTabItem tabItem = tabFolder.getSelection();
+                tabFolderSelection.setValue(tabItem != null ? tabItem.getData() : null);
             }
-        });
+
+        };
+        tabFolder.setTabHeight((int) (fontMetrics.getHeight() * 1.5));
         tabFolder.addCTabFolder2Listener(new CTabFolder2Adapter() {
 
             @Override
             public void close(CTabFolderEvent event) {
                 SourceEditorTab tab = (SourceEditorTab) event.item.getData();
                 event.doit = canCloseSourceTab(tab);
+            }
+        });
+
+        tabFolderSelection = new WritableValue();
+        tabFolderSelection.addValueChangeListener(new IValueChangeListener() {
+
+            @Override
+            public void handleValueChange(ValueChangeEvent event) {
+                SourceEditorTab tab = (SourceEditorTab) event.diff.getOldValue();
+                if (tab != null) {
+                    tab.getEditor().removeCaretListener(caretListener);
+                }
+                tab = (SourceEditorTab) event.diff.getNewValue();
+                if (tab != null) {
+                    StyledText text = tab.getEditor().getStyledText();
+                    int offset = text.getCaretOffset();
+                    int y = text.getLineAtOffset(offset);
+                    int x = offset - text.getOffsetAtLine(y);
+                    statusLine.setCaretPosition(String.format("%d : %d ", y + 1, x + 1));
+                    tab.getEditor().addCaretListener(caretListener);
+                }
+                else {
+                    statusLine.setCaretPosition("");
+                }
             }
         });
 
@@ -1040,7 +1090,12 @@ public class Application {
 
             @Override
             public void run() {
+                IProgressMonitor monitor = statusLine.getProgressMonitor();
+                monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
+
                 compile(builder, reader, name, file);
+
+                monitor.done();
             }
         }).start();
     }
@@ -1289,6 +1344,9 @@ public class Application {
 
             @Override
             public void run() {
+                IProgressMonitor monitor = statusLine.getProgressMonitor();
+                monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
+
                 try {
                     Source source = compile(builder, reader, name, file);
                     if (source == null) {
@@ -1304,18 +1362,25 @@ public class Application {
                     });
 
                     SerialPort serialPort = terminal.getSerialPort();
+                    StringBuilder sb = buildIntelHexString(new ArrayList<Line>(source.getLines()));
 
+                    monitor.beginTask("Upload", sb.length());
                     out.println("Sending to serial port " + serialPort.getPortName() + " ...");
 
-                    StringBuilder sb = buildIntelHexString(new ArrayList<Line>(source.getLines()));
                     for (int i = 0; i < sb.length(); i++) {
                         serialPort.writeInt(sb.charAt(i));
+                        monitor.worked(1);
                     }
+                    while (serialPort.getOutputBufferBytesCount() > 0) {
+                        Thread.sleep(1);
+                    }
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
 
                 out.println("Done");
+                monitor.done();
             }
         }).start();
 
