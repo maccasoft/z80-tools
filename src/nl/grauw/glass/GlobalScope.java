@@ -88,6 +88,7 @@ import nl.grauw.glass.instructions.Sla;
 import nl.grauw.glass.instructions.Sra;
 import nl.grauw.glass.instructions.Srl;
 import nl.grauw.glass.instructions.Sub;
+import nl.grauw.glass.instructions.Text;
 import nl.grauw.glass.instructions.Warning;
 import nl.grauw.glass.instructions.Xor;
 
@@ -175,6 +176,7 @@ public class GlobalScope extends Scope {
         addBuiltInSymbol("dw", new Instruction(new Dw()));
         addBuiltInSymbol("byte", new Instruction(new Db()));
         addBuiltInSymbol("word", new Instruction(new Dw()));
+        addBuiltInSymbol("text", new Instruction(new Text()));
 
         addBuiltInSymbol("include", new Instruction(new Include()));
         addBuiltInSymbol("equ", new Instruction(new Equ()));
@@ -195,6 +197,7 @@ public class GlobalScope extends Scope {
         addBuiltInSymbol(".dw", new Instruction(new Dw()));
         addBuiltInSymbol(".byte", new Instruction(new Db()));
         addBuiltInSymbol(".word", new Instruction(new Dw()));
+        addBuiltInSymbol(".text", new Instruction(new Text()));
 
         addBuiltInSymbol(".include", new Instruction(new Include()));
         addBuiltInSymbol(".equ", new Instruction(new Equ()));

@@ -800,6 +800,21 @@ public class SourceTest {
             " ld hl,$"));
     }
 
+    @Test
+    public void testText() {
+        assertArrayEquals(b(0x21, 0x03, 0x00, 0x31, 0x32, 0x33, 0x34, 0x0D, 0x0A), assemble(
+            " ld hl,test",
+            "test: text \"1234\", 13, 10"));
+    }
+
+    @Test
+    public void testTextIdentifierConversion() {
+        assertArrayEquals(b(0x21, 0x03, 0x00, 0x31, 0x32, 0x0D, 0x0A), assemble(
+            "label: equ 12",
+            " ld hl,test",
+            "test: text label, 13, 10"));
+    }
+
     public byte[] assemble(String... sourceLines) {
         StringBuilder builder = new StringBuilder();
         for (String lineText : sourceLines) {

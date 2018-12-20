@@ -85,6 +85,8 @@ public class Z80TokenMarker extends TokenMarker {
         keywords.put("DD", TokenId.Directive2);
         keywords.put("DS", TokenId.Directive2);
         keywords.put("DW", TokenId.Directive2);
+        keywords.put("BYTE", TokenId.Directive2);
+        keywords.put("TEXT", TokenId.Directive2);
 
         keywords.put("INCLUDE", TokenId.Directive1);
         keywords.put("EQU", TokenId.Directive1);
@@ -103,6 +105,8 @@ public class Z80TokenMarker extends TokenMarker {
         keywords.put(".DD", TokenId.Directive2);
         keywords.put(".DS", TokenId.Directive2);
         keywords.put(".DW", TokenId.Directive2);
+        keywords.put(".BYTE", TokenId.Directive2);
+        keywords.put(".TEXT", TokenId.Directive2);
 
         keywords.put(".INCLUDE", TokenId.Directive1);
         keywords.put(".EQU", TokenId.Directive1);
