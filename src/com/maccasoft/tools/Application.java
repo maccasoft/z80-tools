@@ -13,7 +13,6 @@ package com.maccasoft.tools;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -25,8 +24,6 @@ import java.io.StringReader;
 import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -1219,20 +1216,24 @@ public class Application {
                 }
 
                 OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".LST")));
-                os.write(buildListing(new ArrayList<Line>(source.getLines())).toString());
+                os.write(new ListingBuilder(source).build().toString());
                 os.close();
 
                 os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".HEX")));
-                os.write(buildIntelHexString(new ArrayList<Line>(source.getLines())).toString());
+                os.write(new IntelHexBuilder(source).build().toString());
                 os.close();
             }
 
             int lower = Integer.MAX_VALUE;
             int higher = Integer.MIN_VALUE;
             for (Line line : source.getLines()) {
-                if (line.getSize() != 0) {
-                    lower = Math.min(lower, line.getScope().getAddress());
-                    higher = Math.max(higher, line.getScope().getAddress());
+                try {
+                    if (line.getSize() != 0) {
+                        lower = Math.min(lower, line.getScope().getAddress());
+                        higher = Math.max(higher, line.getScope().getAddress() + line.getSize() - 1);
+                    }
+                } catch (Exception e) {
+                    // Ignore, not important
                 }
             }
             out.println();
@@ -1265,133 +1266,6 @@ public class Application {
         }
 
         return null;
-    }
-
-    StringBuilder buildListing(List<Line> lines) throws IOException {
-        int column;
-        StringBuilder sb = new StringBuilder();
-
-        for (Line line : lines) {
-            try {
-                int address = line.getScope().getAddress();
-                byte[] code = line.getBytes();
-
-                sb.append(String.format("%05d  %04X ", line.getLineNumber() + 1, address));
-
-                column = 0;
-                int codeIndex = 0;
-                for (int i = 0; codeIndex < code.length && (column + 3) < 24; i++, codeIndex++, address++) {
-                    if (i != 0) {
-                        sb.append(' ');
-                        column++;
-                    }
-                    sb.append(String.format("%02X", code[codeIndex]));
-                    column += 2;
-                }
-                while (column < 24 + 1) {
-                    sb.append(' ');
-                    column++;
-                }
-
-                sb.append(line.getSourceText());
-
-                while (codeIndex < code.length) {
-                    sb.append("\r\n");
-                    sb.append(String.format("%05d  %04X ", line.getLineNumber() + 1, address));
-
-                    column = 0;
-                    for (int i = 0; codeIndex < code.length && (column + 3) < 24; i++, codeIndex++, address++) {
-                        if (i != 0) {
-                            sb.append(' ');
-                            column++;
-                        }
-                        sb.append(String.format("%02X", code[codeIndex]));
-                        column += 2;
-                    }
-                }
-
-                sb.append("\r\n");
-            } catch (AssemblyException e) {
-                e.addContext(line);
-                throw e;
-            }
-        }
-
-        return sb;
-    }
-
-    StringBuilder buildIntelHexString(List<Line> lines) throws IOException {
-        int addr = -1;
-        int nextAddr = -1;
-        StringBuilder sb = new StringBuilder();
-
-        Collections.sort(lines, new Comparator<Line>() {
-
-            @Override
-            public int compare(Line o1, Line o2) {
-                return o1.getScope().getAddress() - o2.getScope().getAddress();
-            }
-        });
-
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        for (Line line : lines) {
-            try {
-                byte[] code = line.getBytes();
-                if (code.length == 0) {
-                    continue;
-                }
-                if (line.getScope().getAddress() != nextAddr) {
-                    os.close();
-
-                    byte[] data = os.toByteArray();
-                    if (data.length != 0) {
-                        sb.append(toHexString(addr, data));
-                    }
-
-                    nextAddr = addr = line.getScope().getAddress();
-                    os = new ByteArrayOutputStream();
-                }
-                os.write(code);
-                nextAddr += code.length;
-            } catch (AssemblyException e) {
-                e.addContext(line);
-                throw e;
-            }
-        }
-
-        os.close();
-        byte[] data = os.toByteArray();
-        if (data.length != 0) {
-            sb.append(toHexString(addr, data));
-        }
-
-        sb.append(":00000001FF\r\n");
-
-        return sb;
-    }
-
-    static String toHexString(int addr, byte[] data) {
-        StringBuilder sb = new StringBuilder();
-
-        int i = 0;
-
-        while ((data.length - i) > 0) {
-            int l = data.length - i;
-            if (l > 24) {
-                l = 24;
-            }
-            sb.append(String.format(":%02X%04X%02X", l, addr, 0));
-
-            int checksum = l + (addr & 0xFF) + ((addr >> 8) & 0xFF) + 0;
-            for (int n = 0; n < l; n++, i++, addr++) {
-                sb.append(String.format("%02X", data[i]));
-                checksum += data[i];
-            }
-
-            sb.append(String.format("%02X\r\n", (-checksum) & 0xFF));
-        }
-
-        return sb.toString();
     }
 
     private void handleOpenTerminal() {
@@ -1464,7 +1338,7 @@ public class Application {
                     });
 
                     SerialPort serialPort = terminal.getSerialPort();
-                    StringBuilder sb = buildIntelHexString(new ArrayList<Line>(source.getLines()));
+                    StringBuilder sb = new IntelHexBuilder(source).build();
 
                     monitor.beginTask("Upload", sb.length());
                     out.println("Sending to serial port " + serialPort.getPortName() + " ...");
