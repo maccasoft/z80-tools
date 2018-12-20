@@ -29,6 +29,10 @@ public class Scope implements Context {
         return parent;
     }
 
+    public boolean isAddressSet() {
+        return set;
+    }
+
     @Override
     public int getAddress() {
         if (!set) {

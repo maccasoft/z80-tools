@@ -78,4 +78,12 @@ public class If extends InstructionFactory {
 
     }
 
+    public Source getThenSource() {
+        return thenSource;
+    }
+
+    public Source getElseSource() {
+        return elseSource;
+    }
+
 }

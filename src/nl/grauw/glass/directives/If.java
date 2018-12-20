@@ -22,4 +22,12 @@ public class If extends Directive {
         super.register(scope, line);
     }
 
+    public Source getThenSource() {
+        return thenSource;
+    }
+
+    public Source getElseSource() {
+        return elseSource;
+    }
+
 }

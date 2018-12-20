@@ -74,6 +74,10 @@ public class Line {
         return sourceText;
     }
 
+    public Directive getDirective() {
+        return directive;
+    }
+
     public void setDirective(Directive directive) {
         this.directive = directive;
     }
@@ -124,6 +128,10 @@ public class Line {
             e.addContext(this);
             throw e;
         }
+    }
+
+    public InstructionObject getInstructionObject() {
+        return instructionObject;
     }
 
     public int getSize() {
