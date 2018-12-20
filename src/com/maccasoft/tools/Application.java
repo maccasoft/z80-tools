@@ -57,6 +57,8 @@ import org.eclipse.swt.events.MenuEvent;
 import org.eclipse.swt.events.MenuListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.TraverseEvent;
+import org.eclipse.swt.events.TraverseListener;
 import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
@@ -522,6 +524,38 @@ public class Application {
                 }
             }
         });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Next Source\tCtrl+Tab");
+        item.setAccelerator(SWT.MOD1 + SWT.TAB);
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleNextTab();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Previous Source\tCtrl+Shift+Tab");
+        item.setAccelerator(SWT.MOD1 + SWT.MOD2 + SWT.TAB);
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handlePreviousTab();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
     }
 
     void createToolsMenu(Menu parent) {
@@ -753,6 +787,23 @@ public class Application {
                 }
                 else {
                     statusLine.setCaretPosition("");
+                }
+            }
+        });
+
+        tabFolder.addTraverseListener(new TraverseListener() {
+
+            @Override
+            public void keyTraversed(TraverseEvent e) {
+                if (e.character == SWT.TAB) {
+                    if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
+                        handleNextTab();
+                        e.doit = false;
+                    }
+                    else if ((e.stateMask & SWT.MODIFIER_MASK) == (SWT.MOD1 | SWT.MOD2)) {
+                        handlePreviousTab();
+                        e.doit = false;
+                    }
                 }
             }
         });
@@ -1435,6 +1486,30 @@ public class Application {
             }
         }).start();
 
+    }
+
+    private void handleNextTab() {
+        int index = tabFolder.getSelectionIndex();
+        index++;
+        if (index >= tabFolder.getItemCount()) {
+            index = 0;
+        }
+        tabFolder.setSelection(index);
+        if (tabFolder.getSelection() != null) {
+            tabFolder.getSelection().getControl().setFocus();
+        }
+    }
+
+    private void handlePreviousTab() {
+        int index = tabFolder.getSelectionIndex();
+        index--;
+        if (index < 0) {
+            index = tabFolder.getItemCount() - 1;
+        }
+        tabFolder.setSelection(index);
+        if (tabFolder.getSelection() != null) {
+            tabFolder.getSelection().getControl().setFocus();
+        }
     }
 
     static {
