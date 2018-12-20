@@ -33,22 +33,22 @@ import nl.grauw.glass.expressions.Sequence;
 public class SourceBuilder {
 
     public static final List<String> END_TERMINATORS = Arrays.asList(new String[] {
-        "end", "END"
+        "end", "END", ".end", ".END"
     });
     public static final List<String> ENDM_TERMINATORS = Arrays.asList(new String[] {
-        "endm", "ENDM"
+        "endm", "ENDM", ".endm", ".ENDM"
     });
     public static final List<String> ENDP_TERMINATORS = Arrays.asList(new String[] {
-        "endp", "ENDP"
+        "endp", "ENDP", ".endp", ".ENDP"
     });
     public static final List<String> ENDS_TERMINATORS = Arrays.asList(new String[] {
-        "ends", "ENDS"
+        "ends", "ENDS", ".ends", ".ENDS"
     });
     public static final List<String> ELSE_TERMINATORS = Arrays.asList(new String[] {
-        "else", "ELSE", "endif", "ENDIF"
+        "else", "ELSE", "endif", "ENDIF", ".else", ".ELSE", ".endif", ".ENDIF"
     });
     public static final List<String> ENDIF_TERMINATORS = Arrays.asList(new String[] {
-        "endif", "ENDIF"
+        "endif", "ENDIF", ".endif", ".ENDIF"
     });
 
     private final Source source;
