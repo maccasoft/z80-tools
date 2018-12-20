@@ -143,19 +143,6 @@ public class Application {
         createHelpMenu(menu);
         shell.setMenuBar(menu);
 
-        Rectangle screen = display.getClientArea();
-
-        Rectangle rect = new Rectangle(0, 0, (int) ((float) screen.width / (float) screen.height * 800), 850);
-        rect.x = (screen.width - rect.width) / 2;
-        rect.y = (screen.height - rect.height) / 2;
-        if (rect.y < 0) {
-            rect.height += rect.y * 2;
-            rect.y = 0;
-        }
-
-        shell.setLocation(rect.x, rect.y);
-        shell.setSize(rect.width, rect.height);
-
         GridLayout layout = new GridLayout(1, false);
         layout.marginWidth = layout.marginHeight = 5;
         shell.setLayout(layout);
@@ -168,6 +155,22 @@ public class Application {
 
         statusLine = new StatusLine(shell);
         statusLine.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        Rectangle screen = display.getClientArea();
+
+        Rectangle rect = new Rectangle(0, 0, (int) ((float) screen.width / (float) screen.height * 800), 900);
+        rect.x = (screen.width - rect.width) / 2;
+        rect.y = (screen.height - rect.height) / 2;
+        if (rect.y < 0) {
+            rect.height += rect.y * 2;
+            rect.y = 0;
+        }
+
+        shell.setLocation(rect.x, rect.y);
+        shell.setSize(rect.width, rect.height);
+        if (rect.width > screen.width || rect.height > screen.height) {
+            shell.setMaximized(true);
+        }
 
         shell.open();
 
