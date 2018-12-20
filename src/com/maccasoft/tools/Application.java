@@ -412,7 +412,15 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    CTabItem tabItem = tabFolder.getSelection();
+                    if (tabItem == null) {
+                        return;
+                    }
+                    ((SourceEditorTab) tabItem.getData()).getEditor().undo();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
 
@@ -423,7 +431,15 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    CTabItem tabItem = tabFolder.getSelection();
+                    if (tabItem == null) {
+                        return;
+                    }
+                    ((SourceEditorTab) tabItem.getData()).getEditor().redo();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
 
@@ -436,7 +452,15 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    CTabItem tabItem = tabFolder.getSelection();
+                    if (tabItem == null) {
+                        return;
+                    }
+                    ((SourceEditorTab) tabItem.getData()).getEditor().cut();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
 
@@ -447,7 +471,15 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    CTabItem tabItem = tabFolder.getSelection();
+                    if (tabItem == null) {
+                        return;
+                    }
+                    ((SourceEditorTab) tabItem.getData()).getEditor().copy();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
 
@@ -458,7 +490,15 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    CTabItem tabItem = tabFolder.getSelection();
+                    if (tabItem == null) {
+                        return;
+                    }
+                    ((SourceEditorTab) tabItem.getData()).getEditor().paste();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
 
@@ -471,7 +511,15 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                try {
+                    CTabItem tabItem = tabFolder.getSelection();
+                    if (tabItem == null) {
+                        return;
+                    }
+                    ((SourceEditorTab) tabItem.getData()).getEditor().selectAll();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             }
         });
     }

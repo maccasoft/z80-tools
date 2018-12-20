@@ -238,15 +238,7 @@ public class SourceEditor {
 
             @Override
             public void keyPressed(KeyEvent e) {
-                if (e.keyCode == 'z') {
-                    if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
-                        undo();
-                    }
-                    else if ((e.stateMask & SWT.MODIFIER_MASK) == (SWT.MOD1 | SWT.MOD2)) {
-                        redo();
-                    }
-                }
-                else if (e.keyCode == 'f') {
+                if (e.keyCode == 'f') {
                     if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
                         if (searchBox == null) {
                             searchBox = new SearchBox(text);
