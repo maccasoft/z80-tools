@@ -150,8 +150,23 @@ public class FileBrowser {
         viewer.setInput(roots);
     }
 
+    public void setRoots(String[] roots) {
+        this.roots = new File[roots.length];
+        for (int i = 0; i < roots.length; i++) {
+            this.roots[i] = new File(roots[i]);
+        }
+        viewer.setInput(this.roots);
+    }
+
     public void setSelection(File file) {
         viewer.setSelection(new StructuredSelection(file), true);
+        while (viewer.getSelection().isEmpty()) {
+            file = file.getAbsoluteFile().getParentFile();
+            if (file == null) {
+                return;
+            }
+            viewer.setSelection(new StructuredSelection(file), true);
+        }
         viewer.setExpandedState(file, true);
     }
 

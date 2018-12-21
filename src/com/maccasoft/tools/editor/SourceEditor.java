@@ -18,6 +18,7 @@ import java.util.Stack;
 
 import org.eclipse.jface.dialogs.IInputValidator;
 import org.eclipse.jface.dialogs.InputDialog;
+import org.eclipse.jface.resource.StringConverter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CaretEvent;
@@ -42,6 +43,7 @@ import org.eclipse.swt.events.VerifyEvent;
 import org.eclipse.swt.events.VerifyListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -850,6 +852,19 @@ public class SourceEditor {
 
     public void toggleLineNumbers() {
         setShowLineNumbers(!showLineNumbers);
+    }
+
+    public void setFont(String name) {
+        if (name == null || "".equals(name)) {
+            if ("win32".equals(SWT.getPlatform())) {
+                name = StringConverter.asString(new FontData("Courier New", 9, SWT.NONE));
+            }
+            else {
+                name = StringConverter.asString(new FontData("mono", 9, SWT.NONE));
+            }
+        }
+        FontData fontData = StringConverter.asFontData(name);
+        setFont(fontData.getName(), fontData.getHeight());
     }
 
     public void setFont(String name, int size) {

@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.Reader;
@@ -116,6 +117,37 @@ public class Application {
         }
     };
 
+    final PropertyChangeListener preferencesChangeListner = new PropertyChangeListener() {
+
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            if (Preferences.PROP_ROOTS.equals(evt.getPropertyName())) {
+                String[] roots = preferences.getRoots();
+                if (roots == null || roots.length == 0) {
+                    roots = new String[] {
+                        new File(System.getProperty("user.home")).getAbsolutePath()
+                    };
+                }
+                browser.setRoots(roots);
+            }
+            else if (Preferences.PROP_EDITOR_FONT.equals(evt.getPropertyName())) {
+                CTabItem[] tabItem = tabFolder.getItems();
+                for (int i = 0; i < tabItem.length; i++) {
+                    SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+                    tab.getEditor().setFont((String) evt.getNewValue());
+                }
+            }
+            else if (Preferences.PROP_SHOW_LINE_NUMBERS.equals(evt.getPropertyName())) {
+                CTabItem[] tabItem = tabFolder.getItems();
+                for (int i = 0; i < tabItem.length; i++) {
+                    SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+                    tab.getEditor().setShowLineNumbers(((Boolean) evt.getNewValue()).booleanValue());
+                }
+            }
+        }
+
+    };
+
     public Application() {
         preferences = Preferences.getInstance();
     }
@@ -173,6 +205,8 @@ public class Application {
 
         shell.open();
 
+        preferences.addPropertyChangeListener(preferencesChangeListner);
+
         shell.addListener(SWT.Close, new Listener() {
 
             @Override
@@ -189,6 +223,7 @@ public class Application {
                     terminal = null;
                 }
                 try {
+                    preferences.removePropertyChangeListener(preferencesChangeListner);
                     preferences.save();
                 } catch (IOException e1) {
                     e1.printStackTrace();
@@ -321,7 +356,8 @@ public class Application {
 
             @Override
             public void handleEvent(Event e) {
-
+                PreferencesDialog dlg = new PreferencesDialog(shell);
+                dlg.open();
             }
         });
 
@@ -737,9 +773,6 @@ public class Application {
         sashForm1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         browser = new FileBrowser(sashForm1);
-        browser.setRoots(new File[] {
-            new File(System.getProperty("user.home"))
-        });
 
         sashForm2 = new SashForm(sashForm1, SWT.VERTICAL);
         sashForm2.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -879,6 +912,14 @@ public class Application {
             80, 20
         });
 
+        String[] roots = preferences.getRoots();
+        if (roots == null || roots.length == 0) {
+            roots = new String[] {
+                new File(System.getProperty("user.home")).getAbsolutePath()
+            };
+        }
+        browser.setRoots(roots);
+
         String lastPath = preferences.getLastPath();
         if (lastPath == null) {
             lastPath = new File("").getAbsolutePath();
@@ -919,6 +960,8 @@ public class Application {
         SourceEditorTab tab = new SourceEditorTab(tabFolder, "");
         tab.setText(getDefaultName());
         tab.setFocus();
+        tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
+        tab.getEditor().setFont(preferences.getEditorFont());
     }
 
     String getDefaultName() {
@@ -993,6 +1036,8 @@ public class Application {
         tab.setText(file.getName());
         tab.setToolTipText(file.getAbsolutePath());
         tab.setFile(file);
+        tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
+        tab.getEditor().setFont(preferences.getEditorFont());
 
         return tab;
     }
@@ -1215,13 +1260,23 @@ public class Application {
                     baseName = baseName.substring(0, baseName.lastIndexOf('.'));
                 }
 
-                OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".LST")));
-                os.write(new ListingBuilder(source).build().toString());
-                os.close();
+                if (preferences.isGenerateListing()) {
+                    OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".LST")));
+                    os.write(new ListingBuilder(source).build().toString());
+                    os.close();
+                }
 
-                os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".HEX")));
-                os.write(new IntelHexBuilder(source).build().toString());
-                os.close();
+                if (preferences.isGenerateBinary()) {
+                    OutputStream output = new FileOutputStream(new File(file.getParentFile(), baseName + ".BIN"));
+                    source.generateObjectCode(output);
+                    output.close();
+                }
+
+                if (preferences.isGenerateHex()) {
+                    OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(new File(file.getParentFile(), baseName + ".HEX")));
+                    os.write(new IntelHexBuilder(source).build().toString());
+                    os.close();
+                }
             }
 
             int lower = Integer.MAX_VALUE;

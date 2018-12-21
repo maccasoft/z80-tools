@@ -15,6 +15,7 @@ import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -24,10 +25,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 public class Preferences {
 
-    public static final String PROP_LRU = "lru";
-    public static final String PROP_LASTPATH = "lastPath";
-    public static final String PROP_SERIAL_PORT = "serialPort";
-    public static final String PROP_SERIAL_BAUD = "serialBaud";
+    public static final String PROP_ROOTS = "roots";
+    public static final String PROP_EDITOR_FONT = "editorFont";
+    public static final String PROP_SHOW_LINE_NUMBERS = "showLineNumbers";
 
     public static final String PREFERENCES_NAME = ".z80-tools";
 
@@ -54,6 +54,15 @@ public class Preferences {
         return instance;
     }
 
+    String[] roots;
+
+    String editorFont;
+    boolean showLineNumbers;
+
+    boolean generateBinary;
+    boolean generateHex;
+    boolean generateListing;
+
     String lastPath;
     String serialPort;
     int serialBaud;
@@ -62,8 +71,13 @@ public class Preferences {
     final PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
 
     Preferences() {
-        lru = new ArrayList<String>();
+        showLineNumbers = true;
+
+        generateHex = true;
+        generateListing = true;
+
         serialBaud = 115200;
+        lru = new ArrayList<String>();
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
@@ -80,6 +94,65 @@ public class Preferences {
 
     public void removePropertyChangeListener(String propertyName, PropertyChangeListener listener) {
         changeSupport.removePropertyChangeListener(propertyName, listener);
+    }
+
+    public String[] getRoots() {
+        return roots;
+    }
+
+    public void setRoots(String[] roots) {
+        if (this.roots == roots) {
+            return;
+        }
+        if (this.roots == null && roots != null && roots.length == 0) {
+            return;
+        }
+        if (Arrays.deepEquals(this.roots, roots)) {
+            return;
+        }
+        changeSupport.firePropertyChange(PROP_ROOTS, this.roots, this.roots = roots);
+    }
+
+    public String getEditorFont() {
+        return editorFont;
+    }
+
+    public void setEditorFont(String editorFont) {
+        if (this.editorFont != editorFont) {
+            changeSupport.firePropertyChange(PROP_EDITOR_FONT, this.editorFont, this.editorFont = editorFont);
+        }
+    }
+
+    public boolean isShowLineNumbers() {
+        return showLineNumbers;
+    }
+
+    public void setShowLineNumbers(boolean showLineNumbers) {
+        changeSupport.firePropertyChange(PROP_SHOW_LINE_NUMBERS, this.showLineNumbers, this.showLineNumbers = showLineNumbers);
+    }
+
+    public boolean isGenerateBinary() {
+        return generateBinary;
+    }
+
+    public void setGenerateBinary(boolean generateBinary) {
+        this.generateBinary = generateBinary;
+    }
+
+    public boolean isGenerateHex() {
+        return generateHex;
+    }
+
+    public void setGenerateHex(boolean generateHex) {
+        this.generateHex = generateHex;
+    }
+
+    public boolean isGenerateListing() {
+        return generateListing;
+    }
+
+    public void setGenerateListing(boolean generateListing) {
+        this.generateListing = generateListing;
     }
 
     public String getLastPath() {
@@ -100,12 +173,10 @@ public class Preferences {
         while (lru.size() > 10) {
             lru.remove(lru.size() - 1);
         }
-        changeSupport.firePropertyChange(PROP_LRU, null, this.lru);
     }
 
     public void removeLru(File file) {
         lru.remove(file.getAbsolutePath());
-        changeSupport.firePropertyChange(PROP_LRU, null, this.lru);
     }
 
     public String getSerialPort() {
@@ -113,7 +184,7 @@ public class Preferences {
     }
 
     public void setSerialPort(String serialPort) {
-        changeSupport.firePropertyChange(PROP_SERIAL_PORT, this.serialPort, this.serialPort = serialPort);
+        this.serialPort = serialPort;
     }
 
     public int getSerialBaud() {
@@ -121,7 +192,7 @@ public class Preferences {
     }
 
     public void setSerialBaud(int serialBaud) {
-        changeSupport.firePropertyChange(PROP_SERIAL_BAUD, this.serialBaud, this.serialBaud = serialBaud);
+        this.serialBaud = serialBaud;
     }
 
     public void save() throws IOException {
