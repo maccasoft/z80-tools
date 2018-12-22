@@ -15,21 +15,28 @@ import java.io.FileFilter;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.eclipse.jface.viewers.DoubleClickEvent;
+import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IOpenListener;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.ITreeViewerListener;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.TreeExpansionEvent;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 
 import com.maccasoft.tools.internal.ImageRegistry;
 
 public class FileBrowser {
 
+    Display display;
     TreeViewer viewer;
     File[] roots;
 
@@ -131,11 +138,52 @@ public class FileBrowser {
     };
 
     public FileBrowser(Composite parent) {
+        display = parent.getDisplay();
+
         viewer = new TreeViewer(parent);
         viewer.setLabelProvider(new FileLabelProvider());
         viewer.setSorter(new FileSorter());
         viewer.setContentProvider(new FileTreeContentProvider());
         viewer.setUseHashlookup(true);
+
+        viewer.addDoubleClickListener(new IDoubleClickListener() {
+
+            @Override
+            public void doubleClick(DoubleClickEvent event) {
+                IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+                if (selection.isEmpty()) {
+                    return;
+                }
+                File file = (File) selection.getFirstElement();
+                if (file.isDirectory()) {
+                    viewer.setExpandedState(file, !viewer.getExpandedState(file));
+                }
+            }
+
+        });
+        viewer.addTreeListener(new ITreeViewerListener() {
+
+            @Override
+            public void treeExpanded(TreeExpansionEvent event) {
+                final Object element = event.getElement();
+                display.asyncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (viewer == null || viewer.getControl().isDisposed()) {
+                            return;
+                        }
+                        viewer.refresh(element);
+                    }
+                });
+            }
+
+            @Override
+            public void treeCollapsed(TreeExpansionEvent event) {
+
+            }
+
+        });
 
         visibleExtensions = new HashSet<String>();
         visibleExtensions.add(".asm");
@@ -155,11 +203,27 @@ public class FileBrowser {
         for (int i = 0; i < roots.length; i++) {
             this.roots[i] = new File(roots[i]);
         }
+
+        File currentSelection = getSelection();
+
         viewer.setInput(this.roots);
+
+        if (currentSelection != null) {
+            setSelection(currentSelection);
+        }
+    }
+
+    public File getSelection() {
+        IStructuredSelection selection = (IStructuredSelection) viewer.getSelection();
+        if (selection.isEmpty()) {
+            return null;
+        }
+        return (File) selection.getFirstElement();
     }
 
     public void setSelection(File file) {
         viewer.setSelection(new StructuredSelection(file), true);
+
         while (viewer.getSelection().isEmpty()) {
             file = file.getAbsoluteFile().getParentFile();
             if (file == null) {
@@ -167,7 +231,10 @@ public class FileBrowser {
             }
             viewer.setSelection(new StructuredSelection(file), true);
         }
-        viewer.setExpandedState(file, true);
+
+        if (file.isDirectory()) {
+            viewer.setExpandedState(file, true);
+        }
     }
 
     public void addSelectionChangedListener(ISelectionChangedListener l) {
@@ -189,4 +256,16 @@ public class FileBrowser {
     public void setFocus() {
         viewer.getControl().setFocus();
     }
+
+    public void refresh(File file) {
+        if (file == null) {
+            return;
+        }
+        viewer.refresh(file.getParentFile());
+    }
+
+    public void refresh() {
+        viewer.refresh();
+    }
+
 }

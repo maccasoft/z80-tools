@@ -38,8 +38,10 @@ import org.eclipse.jface.databinding.swt.DisplayRealm;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.IOpenListener;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.OpenEvent;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabFolder2Adapter;
@@ -929,6 +931,23 @@ public class Application {
             file = file.getParentFile();
         }
         browser.setSelection(file);
+        browser.addSelectionChangedListener(new ISelectionChangedListener() {
+
+            @Override
+            public void selectionChanged(SelectionChangedEvent event) {
+                if (event.getSelection().isEmpty()) {
+                    preferences.setLastPath(null);
+                    return;
+                }
+                File file = (File) ((IStructuredSelection) event.getSelection()).getFirstElement();
+                if (!file.isDirectory()) {
+                    file = file.getParentFile();
+                }
+                if (file != null) {
+                    preferences.setLastPath(file.getAbsolutePath());
+                }
+            }
+        });
         browser.addOpenListener(new IOpenListener() {
 
             @Override
@@ -991,6 +1010,7 @@ public class Application {
 
     private void handleFileOpen() {
         FileDialog dlg = new FileDialog(shell, SWT.OPEN);
+        dlg.setText("Open File");
         String[] filterNames = new String[] {
             "Assembler Files"
         };
@@ -999,10 +1019,23 @@ public class Application {
         };
         dlg.setFilterNames(filterNames);
         dlg.setFilterExtensions(filterExtensions);
-        if (preferences.getLastPath() != null) {
-            dlg.setFilterPath(preferences.getLastPath());
+
+        String filterPath = null;
+        if (tabFolder.getSelection() != null) {
+            SourceEditorTab tab = (SourceEditorTab) tabFolder.getSelection().getData();
+            if (tab.getFile() != null) {
+                File file = tab.getFile().getAbsoluteFile().getParentFile();
+                if (file != null) {
+                    filterPath = file.getAbsolutePath();
+                }
+            }
         }
-        dlg.setText("Open File");
+        if (filterPath == null) {
+            filterPath = preferences.getLastPath();
+        }
+        if (filterPath != null) {
+            dlg.setFilterPath(filterPath);
+        }
 
         final String fileName = dlg.open();
         if (fileName != null) {
@@ -1015,7 +1048,6 @@ public class Application {
                 e.printStackTrace();
             }
             preferences.addLru(file);
-            preferences.setLastPath(file.getParent());
         }
     }
 
@@ -1047,7 +1079,10 @@ public class Application {
         if (tabItem == null) {
             return;
         }
-        saveSourceTab((SourceEditorTab) tabItem.getData(), false);
+        File file = saveSourceTab((SourceEditorTab) tabItem.getData(), false);
+        if (file != null) {
+            browser.refresh(file.getAbsoluteFile());
+        }
     }
 
     private void handleFileSaveAs() throws IOException {
@@ -1055,7 +1090,10 @@ public class Application {
         if (tabItem == null) {
             return;
         }
-        saveSourceTab((SourceEditorTab) tabItem.getData(), true);
+        File file = saveSourceTab((SourceEditorTab) tabItem.getData(), true);
+        if (file != null) {
+            browser.refresh(file.getAbsoluteFile());
+        }
     }
 
     private void handleFileSaveAll() {
@@ -1073,6 +1111,7 @@ public class Application {
                 }
             }
         }
+        browser.refresh();
     }
 
     private boolean handleUnsavedContent() {
@@ -1126,11 +1165,22 @@ public class Application {
 
         if (saveAs || file == null) {
             FileDialog dlg = new FileDialog(shell, SWT.SAVE);
-            if (preferences.getLastPath() != null) {
-                dlg.setFilterPath(preferences.getLastPath());
-            }
-            dlg.setFileName(tab.getText());
             dlg.setText("Save File");
+            dlg.setFileName(tab.getText());
+
+            String filterPath = null;
+            if (file != null) {
+                file = file.getAbsoluteFile().getParentFile();
+                if (file != null) {
+                    filterPath = file.getAbsolutePath();
+                }
+            }
+            if (filterPath == null) {
+                filterPath = preferences.getLastPath();
+            }
+            if (filterPath != null) {
+                dlg.setFilterPath(filterPath);
+            }
 
             String fileName = dlg.open();
             if (fileName == null) {
@@ -1147,7 +1197,6 @@ public class Application {
             tab.setFile(file);
             tab.setText(file.getName());
             tab.setToolTipText(file.getAbsolutePath());
-            preferences.setLastPath(file.getParent());
         }
 
         tab.clearDirty();
