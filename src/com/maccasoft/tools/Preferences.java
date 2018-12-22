@@ -58,6 +58,9 @@ public class Preferences {
 
     String editorFont;
     boolean showLineNumbers;
+    boolean reloadOpenTabs;
+    String[] openTabs;
+    String selectedTab;
 
     boolean generateBinary;
     boolean generateHex;
@@ -72,6 +75,7 @@ public class Preferences {
 
     Preferences() {
         showLineNumbers = true;
+        reloadOpenTabs = true;
 
         generateHex = true;
         generateListing = true;
@@ -129,6 +133,30 @@ public class Preferences {
 
     public void setShowLineNumbers(boolean showLineNumbers) {
         changeSupport.firePropertyChange(PROP_SHOW_LINE_NUMBERS, this.showLineNumbers, this.showLineNumbers = showLineNumbers);
+    }
+
+    public boolean isReloadOpenTabs() {
+        return reloadOpenTabs;
+    }
+
+    public void setReloadOpenTabs(boolean reloadOpenTabs) {
+        this.reloadOpenTabs = reloadOpenTabs;
+    }
+
+    public String[] getOpenTabs() {
+        return openTabs;
+    }
+
+    public void setOpenTabs(String[] openTabs) {
+        this.openTabs = openTabs;
+    }
+
+    public String getSelectedTab() {
+        return selectedTab;
+    }
+
+    public void setSelectedTab(String selectedTab) {
+        this.selectedTab = selectedTab;
     }
 
     public boolean isGenerateBinary() {

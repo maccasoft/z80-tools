@@ -585,7 +585,6 @@ public class SourceEditor {
         currentLine = 0;
         this.text.setText(text);
         this.text.setLineBackground(currentLine, 1, currentLineBackground);
-        tokenMarker.refreshMultilineComments(text);
 
         undoStack = new Stack<TextChange>();
         redoStack = new Stack<TextChange>();

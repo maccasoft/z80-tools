@@ -78,6 +78,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
+import com.maccasoft.tools.internal.BusyIndicator;
 import com.maccasoft.tools.internal.ImageRegistry;
 
 import jssc.SerialPort;
@@ -151,11 +152,12 @@ public class Application {
     };
 
     public Application() {
-        preferences = Preferences.getInstance();
+
     }
 
     public void open() {
         display = Display.getDefault();
+        preferences = Preferences.getInstance();
 
         shell = new Shell(display);
         shell.setText(APP_TITLE);
@@ -226,6 +228,21 @@ public class Application {
                 }
                 try {
                     preferences.removePropertyChangeListener(preferencesChangeListner);
+
+                    List<String> openTabs = new ArrayList<String>();
+                    for (int i = 0; i < tabFolder.getItemCount(); i++) {
+                        SourceEditorTab tab = (SourceEditorTab) tabFolder.getItem(i).getData();
+                        if (tab.getFile() != null) {
+                            openTabs.add(tab.getFile().getAbsolutePath());
+                        }
+                    }
+                    preferences.setOpenTabs(openTabs.toArray(new String[openTabs.size()]));
+
+                    if (tabFolder.getSelection() != null) {
+                        SourceEditorTab tab = (SourceEditorTab) tabFolder.getSelection().getData();
+                        preferences.setSelectedTab(tab.getFile().getAbsolutePath());
+                    }
+
                     preferences.save();
                 } catch (IOException e1) {
                     e1.printStackTrace();
@@ -233,6 +250,78 @@ public class Application {
                 ImageRegistry.dispose();
             }
         });
+
+        BusyIndicator.showWhile(display, new Runnable() {
+
+            @Override
+            public void run() {
+                String line;
+
+                final String[] openTabs = preferences.getOpenTabs();
+                if (openTabs == null || openTabs.length == 0 || !preferences.isReloadOpenTabs()) {
+                    return;
+                }
+
+                for (int i = 0; i < openTabs.length; i++) {
+                    File file = new File(openTabs[i]);
+                    StringBuilder sb = new StringBuilder();
+                    try {
+                        if (!file.exists() || file.isDirectory()) {
+                            continue;
+                        }
+
+                        BufferedReader reader = new BufferedReader(new FileReader(file));
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line);
+                            sb.append("\n");
+                        }
+                        reader.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    display.asyncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            SourceEditorTab tab = new SourceEditorTab(tabFolder, sb.toString());
+                            tab.setText(file.getName());
+                            tab.setToolTipText(file.getAbsolutePath());
+                            tab.setFile(file);
+                            tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
+                            tab.getEditor().setFont(preferences.getEditorFont());
+                        }
+                    });
+                }
+
+                display.asyncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (tabFolder.getItemCount() == 0) {
+                            return;
+                        }
+
+                        SourceEditorTab tab = (SourceEditorTab) tabFolder.getItem(0).getData();
+
+                        String s = preferences.getSelectedTab();
+                        if (s != null) {
+                            File selectedFile = new File(s);
+                            for (int i = 0; i < tabFolder.getItemCount(); i++) {
+                                SourceEditorTab editorTab = (SourceEditorTab) tabFolder.getItem(i).getData();
+                                if (selectedFile.equals(editorTab.getFile())) {
+                                    tab = editorTab;
+                                    break;
+                                }
+                            }
+                        }
+
+                        tabFolder.setSelection(tab.getTabItem());
+                        tab.setFocus();
+                    }
+                });
+            }
+        }, true);
     }
 
     void createFileMenu(Menu parent) {
@@ -415,11 +504,9 @@ public class Application {
                             preferences.removeLru(fileToOpen);
                             return;
                         }
-                        SourceEditorTab tab = openSourceTab(fileToOpen);
-                        tabFolder.setSelection(tab.getTabItem());
-                        tab.setFocus();
+                        openSourceTab(fileToOpen);
                         preferences.addLru(fileToOpen);
-                    } catch (IOException e1) {
+                    } catch (Exception e1) {
                         e1.printStackTrace();
                     }
                 }
@@ -959,9 +1046,7 @@ public class Application {
                         if (file.isDirectory()) {
                             return;
                         }
-                        SourceEditorTab tab = openSourceTab(file);
-                        tabFolder.setSelection(tab.getTabItem());
-                        tab.setFocus();
+                        openSourceTab(file);
                         preferences.addLru(file);
                     }
                 } catch (Exception e) {
@@ -1041,37 +1126,52 @@ public class Application {
         if (fileName != null) {
             File file = new File(fileName);
             try {
-                SourceEditorTab tab = openSourceTab(file);
-                tabFolder.setSelection(tab.getTabItem());
-                tab.setFocus();
-            } catch (IOException e) {
+                openSourceTab(file);
+                preferences.addLru(file);
+            } catch (Exception e) {
                 e.printStackTrace();
             }
-            preferences.addLru(file);
         }
     }
 
-    SourceEditorTab openSourceTab(File file) throws IOException {
-        String line;
-        StringBuilder sb = new StringBuilder();
+    void openSourceTab(File file) {
+        BusyIndicator.showWhile(display, new Runnable() {
 
-        if (file.exists()) {
-            BufferedReader reader = new BufferedReader(new FileReader(file));
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-                sb.append("\n");
+            @Override
+            public void run() {
+                String line;
+                StringBuilder sb = new StringBuilder();
+
+                if (file.exists()) {
+                    try {
+                        BufferedReader reader = new BufferedReader(new FileReader(file));
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line);
+                            sb.append("\n");
+                        }
+                        reader.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                display.asyncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        SourceEditorTab tab = new SourceEditorTab(tabFolder, sb.toString());
+                        tab.setText(file.getName());
+                        tab.setToolTipText(file.getAbsolutePath());
+                        tab.setFile(file);
+                        tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
+                        tab.getEditor().setFont(preferences.getEditorFont());
+
+                        tabFolder.setSelection(tab.getTabItem());
+                        tab.setFocus();
+                    }
+                });
             }
-            reader.close();
-        }
-
-        SourceEditorTab tab = new SourceEditorTab(tabFolder, sb.toString());
-        tab.setText(file.getName());
-        tab.setToolTipText(file.getAbsolutePath());
-        tab.setFile(file);
-        tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
-        tab.getEditor().setFont(preferences.getEditorFont());
-
-        return tab;
+        }, true);
     }
 
     private void handleFileSave() throws IOException {

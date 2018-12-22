@@ -44,6 +44,7 @@ public class PreferencesDialog extends Dialog {
     Text editorFont;
     Button editorFontBrowse;
     Button showLineNumbers;
+    Button reloadOpenTabs;
 
     Button generateBinary;
     Button generateHex;
@@ -122,6 +123,12 @@ public class PreferencesDialog extends Dialog {
         showLineNumbers = new Button(composite, SWT.CHECK);
         showLineNumbers.setText("Show line numbers");
         showLineNumbers.setSelection(preferences.isShowLineNumbers());
+
+        new Label(composite, SWT.NONE);
+
+        reloadOpenTabs = new Button(composite, SWT.CHECK);
+        reloadOpenTabs.setText("Reload open tabs");
+        reloadOpenTabs.setSelection(preferences.isReloadOpenTabs());
 
         addSeparator(composite);
 
@@ -282,6 +289,7 @@ public class PreferencesDialog extends Dialog {
 
         preferences.setEditorFont(editorFont.getText().equals(defaultFont) ? null : editorFont.getText());
         preferences.setShowLineNumbers(showLineNumbers.getSelection());
+        preferences.setReloadOpenTabs(reloadOpenTabs.getSelection());
 
         preferences.setGenerateBinary(generateBinary.getSelection());
         preferences.setGenerateHex(generateHex.getSelection());
