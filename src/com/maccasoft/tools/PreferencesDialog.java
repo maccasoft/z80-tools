@@ -22,6 +22,7 @@ import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
@@ -45,6 +46,12 @@ public class PreferencesDialog extends Dialog {
     Button editorFontBrowse;
     Button showLineNumbers;
     Button reloadOpenTabs;
+
+    Text mnemonicColumn;
+    Text argumentColumn;
+    Text commentColumn;
+    Combo labelCase;
+    Combo mnemonicCase;
 
     Button generateBinary;
     Button generateHex;
@@ -132,6 +139,10 @@ public class PreferencesDialog extends Dialog {
 
         addSeparator(composite);
 
+        createFormatterGroup(composite);
+
+        addSeparator(composite);
+
         label = new Label(composite, SWT.NONE);
         label.setText("Compiler output");
 
@@ -154,9 +165,6 @@ public class PreferencesDialog extends Dialog {
         generateListing.setSelection(preferences.isGenerateListing());
 
         addSeparator(composite);
-
-        label = new Label(composite, SWT.NONE);
-        label.setLayoutData(new GridData(SWT.DEFAULT, convertHeightInCharsToPixels(5)));
 
         return composite;
     }
@@ -277,6 +285,46 @@ public class PreferencesDialog extends Dialog {
         rootMoveDown.setEnabled(index != -1 && index < (roots.getItemCount() - 1));
     }
 
+    void createFormatterGroup(Composite parent) {
+        Label label = new Label(parent, SWT.NONE);
+        label.setText("Mnemonic column");
+        mnemonicColumn = new Text(parent, SWT.BORDER);
+        mnemonicColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        mnemonicColumn.setText(String.valueOf(preferences.getMnemonicColumn()));
+
+        label = new Label(parent, SWT.NONE);
+        label.setText("Arguments column");
+        argumentColumn = new Text(parent, SWT.BORDER);
+        argumentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        argumentColumn.setText(String.valueOf(preferences.getArgumentColumn()));
+
+        label = new Label(parent, SWT.NONE);
+        label.setText("Comment column");
+        commentColumn = new Text(parent, SWT.BORDER);
+        commentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        commentColumn.setText(String.valueOf(preferences.getCommentColumn()));
+
+        label = new Label(parent, SWT.NONE);
+        label.setText("Label case");
+        labelCase = new Combo(parent, SWT.DROP_DOWN | SWT.READ_ONLY);
+        labelCase.setItems(new String[] {
+            "No change",
+            "Upper",
+            "Lower",
+        });
+        labelCase.select(preferences.getLabelCase());
+
+        label = new Label(parent, SWT.NONE);
+        label.setText("Mnemonic case");
+        mnemonicCase = new Combo(parent, SWT.DROP_DOWN | SWT.READ_ONLY);
+        mnemonicCase.setItems(new String[] {
+            "No change",
+            "Upper",
+            "Lower",
+        });
+        mnemonicCase.select(preferences.getMnemonicCase());
+    }
+
     void addSeparator(Composite parent) {
         Label label = new Label(parent, SWT.NONE);
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, ((GridLayout) parent.getLayout()).numColumns, 1));
@@ -290,6 +338,12 @@ public class PreferencesDialog extends Dialog {
         preferences.setEditorFont(editorFont.getText().equals(defaultFont) ? null : editorFont.getText());
         preferences.setShowLineNumbers(showLineNumbers.getSelection());
         preferences.setReloadOpenTabs(reloadOpenTabs.getSelection());
+
+        preferences.setMnemonicColumn(Integer.valueOf(mnemonicColumn.getText()));
+        preferences.setArgumentColumn(Integer.valueOf(argumentColumn.getText()));
+        preferences.setCommentColumn(Integer.valueOf(commentColumn.getText()));
+        preferences.setLabelCase(labelCase.getSelectionIndex());
+        preferences.setMnemonicCase(mnemonicCase.getSelectionIndex());
 
         preferences.setGenerateBinary(generateBinary.getSelection());
         preferences.setGenerateHex(generateHex.getSelection());

@@ -62,6 +62,12 @@ public class Preferences {
     String[] openTabs;
     String selectedTab;
 
+    int mnemonicColumn;
+    int argumentColumn;
+    int commentColumn;
+    int labelCase;
+    int mnemonicCase;
+
     boolean generateBinary;
     boolean generateHex;
     boolean generateListing;
@@ -76,6 +82,12 @@ public class Preferences {
     Preferences() {
         showLineNumbers = true;
         reloadOpenTabs = true;
+
+        mnemonicColumn = 16;
+        argumentColumn = mnemonicColumn + 6;
+        commentColumn = mnemonicColumn + 40;
+        labelCase = SourceFormatter.NO_CHANGE;
+        mnemonicCase = SourceFormatter.TO_UPPER;
 
         generateHex = true;
         generateListing = true;
@@ -157,6 +169,46 @@ public class Preferences {
 
     public void setSelectedTab(String selectedTab) {
         this.selectedTab = selectedTab;
+    }
+
+    public int getMnemonicColumn() {
+        return mnemonicColumn;
+    }
+
+    public void setMnemonicColumn(int mnemonicColumn) {
+        this.mnemonicColumn = mnemonicColumn;
+    }
+
+    public int getArgumentColumn() {
+        return argumentColumn;
+    }
+
+    public void setArgumentColumn(int argumentColumn) {
+        this.argumentColumn = argumentColumn;
+    }
+
+    public int getCommentColumn() {
+        return commentColumn;
+    }
+
+    public void setCommentColumn(int commentColumn) {
+        this.commentColumn = commentColumn;
+    }
+
+    public int getLabelCase() {
+        return labelCase;
+    }
+
+    public void setLabelCase(int labelCase) {
+        this.labelCase = labelCase;
+    }
+
+    public int getMnemonicCase() {
+        return mnemonicCase;
+    }
+
+    public void setMnemonicCase(int mnemonicCase) {
+        this.mnemonicCase = mnemonicCase;
     }
 
     public boolean isGenerateBinary() {

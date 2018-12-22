@@ -594,6 +594,21 @@ public class SourceEditor {
         this.text.addCaretListener(caretListener);
     }
 
+    public void replaceText(String text) {
+        int offset = this.text.getCaretOffset();
+        int line = this.text.getLineAtOffset(offset);
+        int topindex = line - this.text.getTopIndex();
+
+        text = EditorUtil.replaceTabs(text, this.text.getTabs());
+        this.text.setText(text);
+
+        if (line > this.text.getLineCount()) {
+            line = this.text.getLineCount() - 1;
+        }
+        this.text.setTopIndex(line - topindex);
+        this.text.setCaretOffset(this.text.getOffsetAtLine(line));
+    }
+
     public String getText() {
         String s = text.getText();
         String s2 = s.replaceAll("[ \\t]+(\r\n|\n|\r)", "$1");

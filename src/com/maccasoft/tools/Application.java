@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
@@ -86,6 +87,8 @@ import nl.grauw.glass.AssemblyException;
 import nl.grauw.glass.Line;
 import nl.grauw.glass.Source;
 import nl.grauw.glass.SourceBuilder;
+import nl.grauw.glass.directives.Directive;
+import nl.grauw.glass.directives.Include;
 
 public class Application {
 
@@ -686,6 +689,56 @@ public class Application {
         MenuItem item = new MenuItem(parent, SWT.CASCADE);
         item.setText("&Tools");
         item.setMenu(menu);
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Format source\tCtrl+Shift+F");
+        item.setAccelerator(SWT.MOD1 + +SWT.MOD2 + 'F');
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    CTabItem tabItem = tabFolder.getSelection();
+                    if (tabItem == null) {
+                        return;
+                    }
+                    SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+                    StringReader reader = new StringReader(tab.getEditor().getText());
+                    SourceBuilder builder = new SourceBuilder(new ArrayList<File>()) {
+
+                        @Override
+                        public Directive getDirective(Line line, LineNumberReader reader, File sourceFile) {
+                            if (line.getMnemonic() != null) {
+                                switch (line.getMnemonic()) {
+                                    case "include":
+                                    case "INCLUDE":
+                                    case ".include":
+                                    case ".INCLUDE":
+                                        return new Include();
+                                }
+                            }
+                            return super.getDirective(line, reader, sourceFile);
+                        }
+
+                    };
+
+                    SourceFormatter formatter = new SourceFormatter(builder.parse(reader, new File("")));
+                    formatter.setMnemonicColumn(preferences.getMnemonicColumn());
+                    formatter.setArgumentColumn(preferences.getArgumentColumn());
+                    formatter.setCommentColumn(preferences.getCommentColumn());
+                    formatter.setLabelCase(preferences.getLabelCase());
+                    formatter.setMnemonicCase(preferences.getMnemonicCase());
+
+                    tab.getEditor().replaceText(formatter.format());
+
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
 
         item = new MenuItem(menu, SWT.PUSH);
         item.setText("Verify / Compile\tCtrl+R");
