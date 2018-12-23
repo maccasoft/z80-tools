@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.databinding.observable.Realm;
 import org.eclipse.core.databinding.observable.value.IValueChangeListener;
@@ -1418,14 +1419,10 @@ public class Application {
 
         console.clear();
 
-        PrintStream out = new PrintStream(console.getOutputStream());
-        out.print("Compiling " + tab.getText() + "...");
-
-        List<File> includePaths = new ArrayList<File>();
+        final List<File> includePaths = new ArrayList<File>();
         if (tab.getFile() != null) {
             includePaths.add(tab.getFile().getParentFile());
         }
-        final SourceBuilder builder = new SourceBuilder(includePaths);
 
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
@@ -1439,18 +1436,52 @@ public class Application {
                 IProgressMonitor monitor = statusLine.getProgressMonitor();
                 monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
 
-                compile(builder, reader, name, file);
+                compile(reader, name, file, includePaths);
 
                 monitor.done();
             }
         }).start();
     }
 
-    Source compile(SourceBuilder builder, Reader reader, String name, File file) {
+    Source compile(Reader reader, String name, File file, List<File> includePaths) {
         PrintStream out = new PrintStream(console.getOutputStream());
         PrintStream err = new PrintStream(console.getErrorStream());
 
+        out.print("Compiling " + name + "...");
+
         try {
+            SourceBuilder builder = new SourceBuilder(includePaths) {
+
+                @Override
+                public Source parse(File sourceFile) {
+                    final AtomicReference<StringReader> result = new AtomicReference<StringReader>();
+
+                    out.print("\r\nCompiling " + sourceFile.getName() + "...");
+
+                    display.syncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            CTabItem[] tabItem = tabFolder.getItems();
+                            for (int i = 0; i < tabItem.length; i++) {
+                                SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+                                if (sourceFile.equals(tab.getFile())) {
+                                    StringReader reader = new StringReader(tab.getEditor().getText());
+                                    result.set(reader);
+                                    break;
+                                }
+                            }
+                        }
+                    });
+                    if (result.get() != null) {
+                        return parse(result.get(), sourceFile);
+                    }
+
+                    return super.parse(sourceFile);
+                }
+
+            };
+
             Source source = builder.parse(reader, new File(name));
             source.register();
             source.expand();
@@ -1559,14 +1590,10 @@ public class Application {
 
         console.clear();
 
-        final PrintStream out = new PrintStream(console.getOutputStream());
-        out.print("Compiling " + tab.getText() + "...");
-
-        List<File> includePaths = new ArrayList<File>();
+        final List<File> includePaths = new ArrayList<File>();
         if (tab.getFile() != null) {
             includePaths.add(tab.getFile().getParentFile());
         }
-        final SourceBuilder builder = new SourceBuilder(includePaths);
 
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
@@ -1577,11 +1604,13 @@ public class Application {
 
             @Override
             public void run() {
+                final PrintStream out = new PrintStream(console.getOutputStream());
+
                 IProgressMonitor monitor = statusLine.getProgressMonitor();
                 monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
 
                 try {
-                    Source source = compile(builder, reader, name, file);
+                    Source source = compile(reader, name, file, includePaths);
                     if (source == null) {
                         return;
                     }

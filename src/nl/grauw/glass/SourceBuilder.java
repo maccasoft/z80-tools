@@ -248,8 +248,7 @@ public class SourceBuilder {
         if (!argument.isString()) {
             throw new AssemblyException("A string literal is expected.");
         }
-        SourceBuilder sourceBuilder = new SourceBuilder(source, END_TERMINATORS, includePaths);
-        sourceBuilder.parseInclude(new File(argument.getString()), sourceFile, once);
+        parseInclude(new File(argument.getString()), sourceFile, once);
         return new Include();
     }
 
