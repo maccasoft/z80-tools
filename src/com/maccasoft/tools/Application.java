@@ -1189,6 +1189,17 @@ public class Application {
     }
 
     void openSourceTab(File file) {
+        CTabItem[] tabItem = tabFolder.getItems();
+        for (int i = 0; i < tabItem.length; i++) {
+            SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+            if (file.equals(tab.getFile())) {
+                tabFolder.setSelection(tab.getTabItem());
+                if (tabFolder.getSelection() != null) {
+                    tabFolder.getSelection().getControl().setFocus();
+                }
+                return;
+            }
+        }
         BusyIndicator.showWhile(display, new Runnable() {
 
             @Override
