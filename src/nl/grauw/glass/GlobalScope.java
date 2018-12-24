@@ -85,6 +85,7 @@ import nl.grauw.glass.instructions.Sbc;
 import nl.grauw.glass.instructions.Scf;
 import nl.grauw.glass.instructions.Set;
 import nl.grauw.glass.instructions.Sla;
+import nl.grauw.glass.instructions.Sll;
 import nl.grauw.glass.instructions.Sra;
 import nl.grauw.glass.instructions.Srl;
 import nl.grauw.glass.instructions.Sub;
@@ -165,6 +166,7 @@ public class GlobalScope extends Scope {
         addBuiltInSymbol("scf", new Instruction(new Scf()));
         addBuiltInSymbol("set", new Instruction(new Set()));
         addBuiltInSymbol("sla", new Instruction(new Sla()));
+        addBuiltInSymbol("sll", new Instruction(new Sll()));
         addBuiltInSymbol("sra", new Instruction(new Sra()));
         addBuiltInSymbol("srl", new Instruction(new Srl()));
         addBuiltInSymbol("sub", new Instruction(new Sub()));

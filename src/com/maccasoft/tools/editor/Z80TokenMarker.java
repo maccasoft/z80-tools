@@ -76,6 +76,7 @@ public class Z80TokenMarker extends TokenMarker {
         keywords.put("SCF", TokenId.Instruction);
         keywords.put("SET", TokenId.Instruction);
         keywords.put("SLA", TokenId.Instruction);
+        keywords.put("SLL", TokenId.Instruction);
         keywords.put("SRA", TokenId.Instruction);
         keywords.put("SRL", TokenId.Instruction);
         keywords.put("SUB", TokenId.Instruction);
