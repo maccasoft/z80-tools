@@ -151,6 +151,32 @@ public class Application {
                     tab.getEditor().setShowLineNumbers(((Boolean) evt.getNewValue()).booleanValue());
                 }
             }
+            else if (Preferences.PROP_TABWIDTH.equals(evt.getPropertyName())) {
+                CTabItem[] tabItem = tabFolder.getItems();
+                for (int i = 0; i < tabItem.length; i++) {
+                    SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+                    tab.getEditor().setTabWidth(((Integer) evt.getNewValue()).intValue());
+                }
+            }
+            else if (Preferences.PROP_USE_TABSTOPS.equals(evt.getPropertyName())) {
+                CTabItem[] tabItem = tabFolder.getItems();
+                for (int i = 0; i < tabItem.length; i++) {
+                    SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+                    tab.getEditor().setUseTabstops(((Boolean) evt.getNewValue()).booleanValue());
+                }
+            }
+            else if (Preferences.PROP_MNEMONIC_COLUMN.equals(evt.getPropertyName()) || Preferences.PROP_ARGUMENT_COLUMN.equals(evt.getPropertyName())
+                || Preferences.PROP_COMMENT_COLUMN.equals(evt.getPropertyName())) {
+                CTabItem[] tabItem = tabFolder.getItems();
+                for (int i = 0; i < tabItem.length; i++) {
+                    SourceEditorTab tab = (SourceEditorTab) tabItem[i].getData();
+                    tab.getEditor().setTabStops(new int[] {
+                        preferences.getMnemonicColumn(),
+                        preferences.getArgumentColumn(),
+                        preferences.getCommentColumn()
+                    });
+                }
+            }
         }
 
     };
@@ -292,8 +318,7 @@ public class Application {
                             tab.setText(file.getName());
                             tab.setToolTipText(file.getAbsolutePath());
                             tab.setFile(file);
-                            tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
-                            tab.getEditor().setFont(preferences.getEditorFont());
+                            applyEditoTabPreferences(tab);
                         }
                     });
                 }
@@ -1117,9 +1142,8 @@ public class Application {
     private void handleFileNew() {
         SourceEditorTab tab = new SourceEditorTab(tabFolder, "");
         tab.setText(getDefaultName());
+        applyEditoTabPreferences(tab);
         tab.setFocus();
-        tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
-        tab.getEditor().setFont(preferences.getEditorFont());
     }
 
     String getDefaultName() {
@@ -1228,8 +1252,7 @@ public class Application {
                         tab.setText(file.getName());
                         tab.setToolTipText(file.getAbsolutePath());
                         tab.setFile(file);
-                        tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
-                        tab.getEditor().setFont(preferences.getEditorFont());
+                        applyEditoTabPreferences(tab);
 
                         tabFolder.setSelection(tab.getTabItem());
                         tab.setFocus();
@@ -1237,6 +1260,18 @@ public class Application {
                 });
             }
         }, true);
+    }
+
+    void applyEditoTabPreferences(SourceEditorTab tab) {
+        tab.getEditor().setShowLineNumbers(preferences.isShowLineNumbers());
+        tab.getEditor().setFont(preferences.getEditorFont());
+        tab.getEditor().setTabWidth(preferences.getTabWidth());
+        tab.getEditor().setTabStops(new int[] {
+            preferences.getMnemonicColumn(),
+            preferences.getArgumentColumn(),
+            preferences.getCommentColumn()
+        });
+        tab.getEditor().setUseTabstops(preferences.isUseTabstops());
     }
 
     private void handleFileSave() throws IOException {

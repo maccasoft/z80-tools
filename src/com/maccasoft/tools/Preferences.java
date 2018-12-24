@@ -28,6 +28,11 @@ public class Preferences {
     public static final String PROP_ROOTS = "roots";
     public static final String PROP_EDITOR_FONT = "editorFont";
     public static final String PROP_SHOW_LINE_NUMBERS = "showLineNumbers";
+    public static final String PROP_MNEMONIC_COLUMN = "mnemonicColumn";
+    public static final String PROP_ARGUMENT_COLUMN = "argumentColumn";
+    public static final String PROP_COMMENT_COLUMN = "commentColumn";
+    public static final String PROP_USE_TABSTOPS = "useTabstops";
+    public static final String PROP_TABWIDTH = "tabWidth";
 
     public static final String PREFERENCES_NAME = ".z80-tools";
 
@@ -67,6 +72,8 @@ public class Preferences {
     int commentColumn;
     int labelCase;
     int mnemonicCase;
+    boolean useTabstops;
+    int tabWidth;
 
     boolean generateBinary;
     boolean generateHex;
@@ -83,6 +90,7 @@ public class Preferences {
         showLineNumbers = true;
         reloadOpenTabs = true;
 
+        tabWidth = 4;
         mnemonicColumn = 16;
         argumentColumn = mnemonicColumn + 6;
         commentColumn = mnemonicColumn + 40;
@@ -176,7 +184,7 @@ public class Preferences {
     }
 
     public void setMnemonicColumn(int mnemonicColumn) {
-        this.mnemonicColumn = mnemonicColumn;
+        changeSupport.firePropertyChange(PROP_MNEMONIC_COLUMN, this.mnemonicColumn, this.mnemonicColumn = mnemonicColumn);
     }
 
     public int getArgumentColumn() {
@@ -184,7 +192,7 @@ public class Preferences {
     }
 
     public void setArgumentColumn(int argumentColumn) {
-        this.argumentColumn = argumentColumn;
+        changeSupport.firePropertyChange(PROP_ARGUMENT_COLUMN, this.argumentColumn, this.argumentColumn = argumentColumn);
     }
 
     public int getCommentColumn() {
@@ -192,7 +200,7 @@ public class Preferences {
     }
 
     public void setCommentColumn(int commentColumn) {
-        this.commentColumn = commentColumn;
+        changeSupport.firePropertyChange(PROP_COMMENT_COLUMN, this.commentColumn, this.commentColumn = commentColumn);
     }
 
     public int getLabelCase() {
@@ -209,6 +217,22 @@ public class Preferences {
 
     public void setMnemonicCase(int mnemonicCase) {
         this.mnemonicCase = mnemonicCase;
+    }
+
+    public boolean isUseTabstops() {
+        return useTabstops;
+    }
+
+    public void setUseTabstops(boolean useTabstops) {
+        changeSupport.firePropertyChange(PROP_USE_TABSTOPS, this.useTabstops, this.useTabstops = useTabstops);
+    }
+
+    public int getTabWidth() {
+        return tabWidth;
+    }
+
+    public void setTabWidth(int tabWidth) {
+        changeSupport.firePropertyChange(PROP_TABWIDTH, this.tabWidth, this.tabWidth = tabWidth);
     }
 
     public boolean isGenerateBinary() {

@@ -84,6 +84,8 @@ public class SourceEditor {
     boolean ignoreRedo;
 
     boolean showLineNumbers = true;
+    int[] tabStops;
+    boolean useTabstops;
 
     class TextChange {
 
@@ -675,26 +677,10 @@ public class SourceEditor {
         }
         sb.insert(index, text.getLineDelimiter());
 
-        if (lineOffset > 0 && lineText.charAt(lineOffset - 1) == '{') {
-            String temp = sb.toString();
-            for (i = 0; i < text.getTabs(); i++) {
-                sb.append(' ');
-            }
-            offset += sb.length();
-            sb.append(temp);
-            sb.append('}');
-            if (lineOffset > 1 && lineText.charAt(lineOffset - 2) == '{') {
-                sb.append('}');
-            }
-        }
-        else {
-            offset += sb.length();
-        }
-
         text.setRedraw(false);
         try {
             text.insert(sb.toString());
-            text.setCaretOffset(offset);
+            text.setCaretOffset(offset + sb.length());
         } finally {
             text.setRedraw(true);
         }
@@ -1020,47 +1006,26 @@ public class SourceEditor {
         int offset = text.getCaretOffset();
         int lineNumber = text.getLineAtOffset(offset);
         int lineStart = text.getOffsetAtLine(lineNumber);
-
         int lineOffset = offset - lineStart;
-        String line = text.getLine(lineNumber);
 
-        int nonBlankOffset = 0;
-        while (nonBlankOffset < line.length() && (line.charAt(nonBlankOffset) == ' ' || line.charAt(nonBlankOffset) == '\t')) {
-            nonBlankOffset++;
-        }
-
-        int prevTabStop = -1;
-
-        if (nonBlankOffset == lineOffset) {
-            while (lineNumber > 0) {
-                line = text.getLine(--lineNumber);
-                if ("".equals(line.trim())) {
-                    continue;
-                }
-
-                nonBlankOffset = 0;
-                while (nonBlankOffset < line.length() && (line.charAt(nonBlankOffset) == ' ' || line.charAt(nonBlankOffset) == '\t')) {
-                    nonBlankOffset++;
-                }
-                if (nonBlankOffset > lineOffset) {
-                    prevTabStop = nonBlankOffset;
-                    break;
+        int tabStop = ((lineOffset + text.getTabs()) / text.getTabs()) * text.getTabs();
+        if (useTabstops && tabStops != null) {
+            for (int i = tabStops.length - 1; i >= 0; i--) {
+                if (lineOffset < tabStops[i]) {
+                    tabStop = tabStops[i];
                 }
             }
         }
-        if (prevTabStop == -1) {
-            prevTabStop = ((lineOffset + text.getTabs()) / text.getTabs()) * text.getTabs();
-        }
 
         StringBuilder sb = new StringBuilder();
-        while (sb.length() < (prevTabStop - lineOffset)) {
-            sb.append(" ");
+        while (sb.length() < (tabStop - lineOffset)) {
+            sb.append(' ');
         }
 
         text.setRedraw(false);
         try {
             text.insert(sb.toString());
-            text.setCaretOffset(lineStart + prevTabStop);
+            text.setCaretOffset(lineStart + tabStop);
             text.showSelection();
         } finally {
             text.setRedraw(true);
@@ -1072,45 +1037,39 @@ public class SourceEditor {
         int lineNumber = text.getLineAtOffset(offset);
         int lineStart = text.getOffsetAtLine(lineNumber);
 
-        if (offset == lineStart) {
+        if (offset == lineStart || !useTabstops) {
             return true;
         }
 
         int lineOffset = offset - lineStart;
-        String line = text.getLine(lineNumber);
 
-        int nonBlankOffset = 0;
-        while (nonBlankOffset < line.length() && (line.charAt(nonBlankOffset) == ' ' || line.charAt(nonBlankOffset) == '\t')) {
-            nonBlankOffset++;
-        }
-        if (nonBlankOffset != lineOffset) {
-            return true;
+        int tabStop = (lineOffset / text.getTabs()) * text.getTabs();
+        if (tabStop == lineOffset) {
+            tabStop -= text.getTabs();
         }
 
-        int prevTabStop = -1;
-        while (lineNumber > 0) {
-            line = text.getLine(--lineNumber);
-            if ("".equals(line.trim())) {
-                continue;
-            }
-
-            nonBlankOffset = 0;
-            while (nonBlankOffset < line.length() && (line.charAt(nonBlankOffset) == ' ' || line.charAt(nonBlankOffset) == '\t')) {
-                nonBlankOffset++;
-            }
-            if (nonBlankOffset < lineOffset) {
-                prevTabStop = nonBlankOffset;
-                break;
+        if (tabStops != null) {
+            for (int i = 0; i < tabStops.length; i++) {
+                if (tabStops[i] < lineOffset) {
+                    tabStop = tabStops[i];
+                }
             }
         }
-        if (prevTabStop == -1) {
-            prevTabStop = ((lineOffset - 1) / text.getTabs()) * text.getTabs();
+
+        String s = text.getLine(lineNumber).substring(tabStop, lineOffset);
+        while (s.endsWith(" ")) {
+            s = s.substring(0, s.length() - 1);
+        }
+        if (s.length() != 0) {
+            s = s + " ";
+            if ((s.length() + tabStop) >= lineOffset) {
+                return true;
+            }
         }
 
         text.setRedraw(false);
         try {
-            text.setSelection(lineStart + prevTabStop, offset);
-            text.insert("");
+            text.replaceTextRange(lineStart + tabStop, lineOffset - tabStop, s);
             text.showSelection();
         } finally {
             text.setRedraw(true);
@@ -1118,4 +1077,31 @@ public class SourceEditor {
 
         return false;
     }
+
+    public int[] getTabStops() {
+        return tabStops;
+    }
+
+    public void setTabStops(int[] tabStops) {
+        this.tabStops = new int[tabStops.length + 1];
+        this.tabStops[0] = 0;
+        System.arraycopy(tabStops, 0, this.tabStops, 1, tabStops.length);
+    }
+
+    public boolean isUseTabstops() {
+        return useTabstops;
+    }
+
+    public void setUseTabstops(boolean useTabstops) {
+        this.useTabstops = useTabstops;
+    }
+
+    public void setTabWidth(int width) {
+        text.setTabs(width);
+    }
+
+    public int getTabWidth() {
+        return text.getTabs();
+    }
+
 }

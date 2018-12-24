@@ -45,6 +45,8 @@ public class PreferencesDialog extends Dialog {
     Text editorFont;
     Button editorFontBrowse;
     Button showLineNumbers;
+    Text tabWidth;
+    Button useTabstops;
     Button reloadOpenTabs;
 
     Text mnemonicColumn;
@@ -131,6 +133,19 @@ public class PreferencesDialog extends Dialog {
         showLineNumbers.setText("Show line numbers");
         showLineNumbers.setSelection(preferences.isShowLineNumbers());
 
+        label = new Label(composite, SWT.NONE);
+        label.setText("Tab width");
+
+        tabWidth = new Text(composite, SWT.BORDER);
+        tabWidth.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
+        tabWidth.setText(String.valueOf(preferences.getTabWidth()));
+
+        new Label(composite, SWT.NONE);
+
+        useTabstops = new Button(composite, SWT.CHECK);
+        useTabstops.setText("Use formatter tabstops");
+        useTabstops.setSelection(preferences.isUseTabstops());
+
         new Label(composite, SWT.NONE);
 
         reloadOpenTabs = new Button(composite, SWT.CHECK);
@@ -143,26 +158,7 @@ public class PreferencesDialog extends Dialog {
 
         addSeparator(composite);
 
-        label = new Label(composite, SWT.NONE);
-        label.setText("Compiler output");
-
-        Composite group = new Composite(composite, SWT.NONE);
-        layout = new GridLayout(3, false);
-        layout.marginWidth = layout.marginHeight = 0;
-        group.setLayout(layout);
-        group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-
-        generateBinary = new Button(group, SWT.CHECK);
-        generateBinary.setText("Binary");
-        generateBinary.setSelection(preferences.isGenerateBinary());
-
-        generateHex = new Button(group, SWT.CHECK);
-        generateHex.setText("Intel Hex");
-        generateHex.setSelection(preferences.isGenerateHex());
-
-        generateListing = new Button(group, SWT.CHECK);
-        generateListing.setText("Listing");
-        generateListing.setSelection(preferences.isGenerateListing());
+        createCompilerGroup(composite);
 
         addSeparator(composite);
 
@@ -289,19 +285,19 @@ public class PreferencesDialog extends Dialog {
         Label label = new Label(parent, SWT.NONE);
         label.setText("Mnemonic column");
         mnemonicColumn = new Text(parent, SWT.BORDER);
-        mnemonicColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        mnemonicColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
         mnemonicColumn.setText(String.valueOf(preferences.getMnemonicColumn()));
 
         label = new Label(parent, SWT.NONE);
         label.setText("Arguments column");
         argumentColumn = new Text(parent, SWT.BORDER);
-        argumentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        argumentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
         argumentColumn.setText(String.valueOf(preferences.getArgumentColumn()));
 
         label = new Label(parent, SWT.NONE);
         label.setText("Comment column");
         commentColumn = new Text(parent, SWT.BORDER);
-        commentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        commentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
         commentColumn.setText(String.valueOf(preferences.getCommentColumn()));
 
         label = new Label(parent, SWT.NONE);
@@ -325,6 +321,29 @@ public class PreferencesDialog extends Dialog {
         mnemonicCase.select(preferences.getMnemonicCase());
     }
 
+    void createCompilerGroup(Composite parent) {
+        Label label = new Label(parent, SWT.NONE);
+        label.setText("Compiler output");
+
+        Composite group = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(3, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        group.setLayout(layout);
+        group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        generateBinary = new Button(group, SWT.CHECK);
+        generateBinary.setText("Binary");
+        generateBinary.setSelection(preferences.isGenerateBinary());
+
+        generateHex = new Button(group, SWT.CHECK);
+        generateHex.setText("Intel Hex");
+        generateHex.setSelection(preferences.isGenerateHex());
+
+        generateListing = new Button(group, SWT.CHECK);
+        generateListing.setText("Listing");
+        generateListing.setSelection(preferences.isGenerateListing());
+    }
+
     void addSeparator(Composite parent) {
         Label label = new Label(parent, SWT.NONE);
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, ((GridLayout) parent.getLayout()).numColumns, 1));
@@ -337,6 +356,8 @@ public class PreferencesDialog extends Dialog {
 
         preferences.setEditorFont(editorFont.getText().equals(defaultFont) ? null : editorFont.getText());
         preferences.setShowLineNumbers(showLineNumbers.getSelection());
+        preferences.setTabWidth(Integer.valueOf(tabWidth.getText()));
+        preferences.setUseTabstops(useTabstops.getSelection());
         preferences.setReloadOpenTabs(reloadOpenTabs.getSelection());
 
         preferences.setMnemonicColumn(Integer.valueOf(mnemonicColumn.getText()));
