@@ -11,6 +11,7 @@ import z80core.Z80.IntMode;
  * @author jsanchez
  */
 public class Z80State {
+
     // Acumulador y resto de registros de 8 bits
     private int regA, regB, regC, regD, regE, regH, regL;
     // Flags sIGN, zERO, 5, hALFCARRY, 3, pARITY y ADDSUB (n), carryFlag
@@ -72,10 +73,10 @@ public class Z80State {
      *                Shit yourself, little parrot.
      */
     private int memptr;
-    
+
     public Z80State() {
     }
-    
+
     // Acceso a registros de 8 bits
     public final int getRegA() {
         return regA;
@@ -84,7 +85,7 @@ public class Z80State {
     public final void setRegA(int value) {
         regA = value & 0xff;
     }
-    
+
     public final int getRegF() {
         return regF;
     }
@@ -149,7 +150,7 @@ public class Z80State {
     public final void setRegAx(int value) {
         regAx = value & 0xff;
     }
-    
+
     public final int getRegFx() {
         return regFx;
     }
@@ -337,7 +338,7 @@ public class Z80State {
     public final void setMemPtr(int word) {
         memptr = word & 0xffff;
     }
-    
+
     // Acceso a los flip-flops de interrupción
     public final boolean isIFF1() {
         return ffIFF1;
@@ -358,7 +359,7 @@ public class Z80State {
     public final boolean isNMI() {
         return activeNMI;
     }
-    
+
     public final void setNMI(boolean nmi) {
         activeNMI = nmi;
     }
@@ -372,7 +373,7 @@ public class Z80State {
     public final boolean isINTLine() {
         return activeINT;
     }
-    
+
     public final void setINTLine(boolean intLine) {
         activeINT = intLine;
     }
@@ -393,11 +394,11 @@ public class Z80State {
     public void setHalted(boolean state) {
         halted = state;
     }
-    
+
     public final boolean isPendingEI() {
         return pendingEI;
     }
-    
+
     public final void setPendingEI(boolean state) {
         pendingEI = state;
     }
@@ -415,4 +416,5 @@ public class Z80State {
     public void setFlagQ(boolean flagQ) {
         this.flagQ = flagQ;
     }
+
 }
