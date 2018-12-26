@@ -233,6 +233,7 @@
         <copy todir="${work}/${folder}">
             <fileset file="LICENSE"/>
             <fileset file="LICENSE.glass"/>
+            <fileset file="LICENSE.z80core"/>
             <fileset file="NOTICE.glass"/>
         </copy>
     </target>
