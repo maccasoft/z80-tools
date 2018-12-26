@@ -31,6 +31,8 @@ public class StatusLine implements IProgressMonitor {
     Label caretPositionLabel;
     ProgressIndicator progressBar;
 
+    boolean canceled;
+
     public StatusLine(Composite parent) {
         display = parent.getDisplay();
 
@@ -98,6 +100,8 @@ public class StatusLine implements IProgressMonitor {
 
     @Override
     public void beginTask(String name, final int totalWork) {
+        canceled = false;
+
         final boolean animated = (totalWork == UNKNOWN || totalWork == 0);
         display.syncExec(new Runnable() {
 
@@ -162,12 +166,12 @@ public class StatusLine implements IProgressMonitor {
 
     @Override
     public boolean isCanceled() {
-        return false;
+        return canceled;
     }
 
     @Override
     public void setCanceled(boolean value) {
-
+        canceled = value;
     }
 
     @Override

@@ -79,9 +79,13 @@ public class Preferences {
     boolean generateHex;
     boolean generateListing;
 
-    String lastPath;
     String serialPort;
     int serialBaud;
+    String downloadCommand;
+    String xmodemCommand;
+
+    int lastUploadType;
+    String lastPath;
     List<String> lru;
 
     final PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
@@ -101,6 +105,9 @@ public class Preferences {
         generateListing = true;
 
         serialBaud = 115200;
+        downloadCommand = "A:DOWNLOAD {0}";
+        xmodemCommand = "A:XMODEM {0} /R /X0 /Q";
+
         lru = new ArrayList<String>();
     }
 
@@ -297,6 +304,30 @@ public class Preferences {
 
     public void setSerialBaud(int serialBaud) {
         this.serialBaud = serialBaud;
+    }
+
+    public String getDownloadCommand() {
+        return downloadCommand;
+    }
+
+    public void setDownloadCommand(String downloadCommand) {
+        this.downloadCommand = downloadCommand;
+    }
+
+    public String getXmodemCommand() {
+        return xmodemCommand;
+    }
+
+    public void setXmodemCommand(String xmodemCommand) {
+        this.xmodemCommand = xmodemCommand;
+    }
+
+    public int getLastUploadType() {
+        return lastUploadType;
+    }
+
+    public void setLastUploadType(int lastUploadType) {
+        this.lastUploadType = lastUploadType;
     }
 
     public void save() throws IOException {

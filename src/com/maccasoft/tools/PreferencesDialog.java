@@ -58,6 +58,8 @@ public class PreferencesDialog extends Dialog {
     Button generateBinary;
     Button generateHex;
     Button generateListing;
+    Text downloadCommand;
+    Text xmodemCommand;
 
     Preferences preferences;
     String defaultFont;
@@ -160,7 +162,17 @@ public class PreferencesDialog extends Dialog {
 
         createCompilerGroup(composite);
 
-        addSeparator(composite);
+        label = new Label(composite, SWT.NONE);
+        label.setText("Download cmd.");
+        downloadCommand = new Text(composite, SWT.BORDER);
+        downloadCommand.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        downloadCommand.setText(preferences.getDownloadCommand());
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("XModem cmd.");
+        xmodemCommand = new Text(composite, SWT.BORDER);
+        xmodemCommand.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        xmodemCommand.setText(preferences.getXmodemCommand());
 
         return composite;
     }
@@ -369,6 +381,8 @@ public class PreferencesDialog extends Dialog {
         preferences.setGenerateBinary(generateBinary.getSelection());
         preferences.setGenerateHex(generateHex.getSelection());
         preferences.setGenerateListing(generateListing.getSelection());
+        preferences.setDownloadCommand(downloadCommand.getText());
+        preferences.setXmodemCommand(xmodemCommand.getText());
 
         super.okPressed();
     }

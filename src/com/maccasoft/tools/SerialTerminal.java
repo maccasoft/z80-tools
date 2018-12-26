@@ -10,9 +10,7 @@
 
 package com.maccasoft.tools;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
-
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
@@ -39,12 +37,11 @@ import com.maccasoft.tools.internal.ImageRegistry;
 import jssc.SerialPort;
 import jssc.SerialPortEvent;
 import jssc.SerialPortEventListener;
+import jssc.SerialPortException;
 import jssc.SerialPortList;
+import jssc.SerialPortTimeoutException;
 
 public class SerialTerminal extends Window {
-
-    public static final String PROP_PORT = "port";
-    public static final String PROP_BAUD = "baud";
 
     public static final String[] BAUD_RATES = new String[] {
         String.valueOf(SerialPort.BAUDRATE_9600),
@@ -53,6 +50,13 @@ public class SerialTerminal extends Window {
         String.valueOf(SerialPort.BAUDRATE_57600),
         String.valueOf(SerialPort.BAUDRATE_115200)
     };
+
+    public static final byte SOH = 0x01;
+    public static final byte EOT = 0x04;
+    public static final byte ACK = 0x06;
+    public static final byte NAK = 0x15;
+    public static final byte CAN = 0x18;
+    public static final byte C = 0x43; // 'C' which use in XModem/CRC
 
     Display display;
     Composite container;
@@ -66,16 +70,15 @@ public class SerialTerminal extends Window {
     int baud;
     SerialPort serialPort;
 
-    final PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
+    Preferences preferences;
 
     final SelectionAdapter comPortSelectionListener = new SelectionAdapter() {
 
         @Override
         public void widgetSelected(SelectionEvent e) {
-            String oldPort = port;
             port = comPort.getText();
             updateSerialPortSettings();
-            changeSupport.firePropertyChange(PROP_PORT, oldPort, port);
+            preferences.setSerialPort(port);
             term.setFocus();
         }
     };
@@ -84,10 +87,9 @@ public class SerialTerminal extends Window {
 
         @Override
         public void widgetSelected(SelectionEvent e) {
-            int oldBaud = baud;
             baud = Integer.valueOf(baudRate.getText());
             updateSerialPortSettings();
-            changeSupport.firePropertyChange(PROP_BAUD, oldBaud, baud);
+            preferences.setSerialBaud(baud);
             term.setFocus();
         }
     };
@@ -268,6 +270,10 @@ public class SerialTerminal extends Window {
     protected Control createContents(Composite parent) {
         display = parent.getDisplay();
 
+        preferences = Preferences.getInstance();
+        port = preferences.getSerialPort();
+        baud = preferences.getSerialBaud();
+
         container = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, false);
         layout.marginWidth = layout.marginHeight = 0;
@@ -291,12 +297,11 @@ public class SerialTerminal extends Window {
             @Override
             public void widgetDisposed(DisposeEvent e) {
                 try {
-                    PropertyChangeListener[] l = changeSupport.getPropertyChangeListeners();
-                    for (int i = 0; i < l.length; i++) {
-                        changeSupport.removePropertyChangeListener(l[i]);
-                    }
-
                     serialPort.removeEventListener();
+                } catch (Exception ex) {
+                    // Do nothing
+                }
+                try {
                     if (serialPort.isOpened()) {
                         serialPort.closePort();
                     }
@@ -414,50 +419,6 @@ public class SerialTerminal extends Window {
         getShell().setText("Serial Terminal on " + port);
     }
 
-    public void addPropertyChangeListener(PropertyChangeListener listener) {
-        changeSupport.addPropertyChangeListener(listener);
-    }
-
-    public void removePropertyChangeListener(PropertyChangeListener listener) {
-        changeSupport.removePropertyChangeListener(listener);
-    }
-
-    public void addPropertyChangeListener(String propertyName, PropertyChangeListener listener) {
-        changeSupport.addPropertyChangeListener(propertyName, listener);
-    }
-
-    public void removePropertyChangeListener(String propertyName, PropertyChangeListener listener) {
-        changeSupport.removePropertyChangeListener(propertyName, listener);
-    }
-
-    public String getPort() {
-        return port;
-    }
-
-    public void setPort(String port) {
-        if (comPort != null && !comPort.isDisposed()) {
-            int index = comPort.indexOf(port);
-            if (index != -1) {
-                comPort.select(index);
-            }
-        }
-        this.port = port;
-    }
-
-    public int getBaud() {
-        return baud;
-    }
-
-    public void setBaud(int baud) {
-        if (baudRate != null && !baudRate.isDisposed()) {
-            int index = baudRate.indexOf(String.valueOf(baud));
-            if (index != -1) {
-                baudRate.select(index);
-            }
-        }
-        this.baud = baud;
-    }
-
     public void setFocus() {
         term.setFocus();
     }
@@ -492,4 +453,284 @@ public class SerialTerminal extends Window {
     public void dispose() {
         getShell().dispose();
     }
+
+    public void uploadPackedBinary(String name, byte[] data, IProgressMonitor monitor) throws SerialPortException, SerialPortTimeoutException {
+        int checksum;
+        String s;
+
+        try {
+            serialPort.removeEventListener();
+        } catch (SerialPortException e) {
+            // Do nothing
+        }
+
+        try {
+            s = preferences.getDownloadCommand();
+            s = s.replace("{0}", name.toUpperCase());
+            serialPort.writeString(s);
+            serialPort.writeInt(13);
+            flushOutput();
+            do {
+                s = readString();
+            } while (s.length() != 0 && !s.contains("DOWNLOAD "));
+
+            serialPort.writeString("U0\r");
+            flushOutput();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e1) {
+                // Do nothing
+            }
+
+            serialPort.writeString(":");
+            flushOutput();
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e1) {
+                // Do nothing
+            }
+
+            checksum = 0;
+            for (int i = 0; i < data.length; i++) {
+                serialPort.writeString(String.format("%02X", data[i] & 0xFF));
+                flushOutput();
+                checksum += data[i] & 0xFF;
+                if (i > 0 && (i & 127) == 0) {
+                    waitDot();
+                    if (monitor != null) {
+                        monitor.worked(1);
+                    }
+                }
+                if (monitor != null && monitor.isCanceled()) {
+                    return;
+                }
+            }
+
+            serialPort.writeString(">");
+            flushOutput();
+            if ((data.length & 127) != 0) {
+                waitDot();
+                if (monitor != null) {
+                    monitor.worked(1);
+                }
+            }
+        } finally {
+            try {
+                serialPort.addEventListener(serialEventListener);
+            } catch (SerialPortException e) {
+                // Do nothing
+            }
+        }
+
+        serialPort.writeString(String.format("%02X", data.length & 0xFF));
+        flushOutput();
+
+        serialPort.writeString(String.format("%02X", checksum & 0xFF));
+        flushOutput();
+    }
+
+    void flushOutput() throws SerialPortException {
+        while (serialPort.getOutputBufferBytesCount() > 0) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                // Do nothing
+            }
+        }
+    }
+
+    String readString() throws SerialPortException, SerialPortTimeoutException {
+        String s = "";
+
+        while (true) {
+            byte[] b = serialPort.readBytes(1, 5000);
+            print(b[0]);
+            if (b[0] == '\r') {
+                try {
+                    b = serialPort.readBytes(1, 200);
+                    print(b[0]);
+                } catch (SerialPortTimeoutException e) {
+                    // Do nothing
+                }
+                break;
+            }
+            if (b[0] >= ' ') {
+                s = s + (char) b[0];
+            }
+        }
+
+        return s;
+    }
+
+    void print(byte b) {
+        display.syncExec(new Runnable() {
+
+            @Override
+            public void run() {
+                term.print(b);
+            }
+        });
+    }
+
+    void waitDot() throws SerialPortException, SerialPortTimeoutException {
+        while (true) {
+            byte[] b = serialPort.readBytes(1, 5000);
+            if (b != null) {
+                print(b[0]);
+                if (b[0] == '.') {
+                    break;
+                }
+            }
+        }
+    }
+
+    public void uploadXModem(String name, byte[] data, IProgressMonitor monitor) throws SerialPortException, SerialPortTimeoutException {
+        String s;
+
+        try {
+            serialPort.removeEventListener();
+        } catch (SerialPortException e) {
+            // Do nothing
+        }
+
+        try {
+            s = preferences.getXmodemCommand();
+            s = s.replace("{0}", name.toUpperCase());
+            serialPort.writeString(s);
+            serialPort.writeInt(13);
+            flushOutput();
+            do {
+                s = readString();
+            } while (s.length() != 0 && !s.contains("XMODEM "));
+
+            s = "";
+            while (true) {
+                byte[] b = serialPort.readBytes(1, 15000);
+                print(b[0]);
+                if (b[0] >= ' ') {
+                    s = s + (char) b[0];
+                    if (s.endsWith("Overwrite (Y/N)?")) {
+                        serialPort.writeString("Y\r");
+                        s = "";
+                    }
+                    if (s.endsWith("with CRCs")) {
+                        break;
+                    }
+                }
+            }
+
+            boolean doCrc = false;
+            int packet = 1;
+            int errors = 0;
+
+            int i = 0;
+            while (i < data.length) {
+                try {
+                    byte[] b = serialPort.readBytes(1, 15000);
+
+                    if (b[0] == CAN) {
+                        break;
+                    }
+
+                    if (b[0] == C) {
+                        doCrc = true;
+                        b[0] = NAK;
+                    }
+
+                    if (b[0] == ACK) {
+                        i += 128;
+                        packet++;
+                        if (monitor != null) {
+                            monitor.worked(1);
+                        }
+                        errors++;
+                    }
+
+                    if (b[0] == NAK) {
+                        errors++;
+                        if (errors >= 10) {
+                            return;
+                        }
+                    }
+
+                    if (b[0] == ACK || b[0] == NAK) {
+                        serialPort.writeByte(SOH);
+                        serialPort.writeByte((byte) packet);
+                        serialPort.writeByte((byte) (packet ^ 0xFF));
+
+                        int checksum = 0, crc = 0;
+                        int x = 0;
+                        while (x < 128 && (i + x) < data.length) {
+                            serialPort.writeByte(data[i + x]);
+                            checksum += data[i + x] & 0xFF;
+                            crc = updateCrc(crc, data[i + x] & 0xFF);
+                            x++;
+                        }
+                        if (x < 128) {
+                            serialPort.writeByte((byte) 0x1A);
+                            checksum += 0x1A;
+                            crc = updateCrc(crc, 0x1A);
+                            x++;
+                            while (x < 128) {
+                                serialPort.writeByte((byte) 0);
+                                crc = updateCrc(crc, 0);
+                                x++;
+                            }
+                        }
+
+                        if (doCrc) {
+                            serialPort.writeByte((byte) ((crc >> 8) & 0xFF));
+                            serialPort.writeByte((byte) (crc & 0xFF));
+                        }
+                        else {
+                            serialPort.writeByte((byte) checksum);
+                        }
+                    }
+
+                    if (monitor != null && monitor.isCanceled()) {
+                        serialPort.writeBytes(new byte[] {
+                            CAN, CAN, CAN
+                        });
+                        return;
+                    }
+                } catch (SerialPortTimeoutException e) {
+                    errors++;
+                    if (errors >= 10) {
+                        return;
+                    }
+                }
+            }
+
+            if (i >= data.length) {
+                serialPort.writeByte(EOT);
+                byte[] b = serialPort.readBytes(1, 5000);
+                if (b[0] == NAK) {
+                    serialPort.writeByte(EOT);
+                }
+                b = serialPort.readBytes(1, 5000);
+                if (b[0] == NAK) {
+                    serialPort.writeByte(EOT);
+                }
+            }
+        } finally {
+            try {
+                serialPort.addEventListener(serialEventListener);
+            } catch (SerialPortException e) {
+                // Do nothing
+            }
+        }
+    }
+
+    int updateCrc(int crc, int b) {
+        for (int i = 0; i < 8; i++) {
+            boolean bit = ((b >>> (7 - i) & 1) == 1);
+            boolean c15 = ((crc >>> 15 & 1) == 1);
+            crc <<= 1;
+            if (c15 ^ bit) {
+                crc ^= 0x1021;
+            }
+        }
+        return crc & 0xFFFF;
+    }
+
 }

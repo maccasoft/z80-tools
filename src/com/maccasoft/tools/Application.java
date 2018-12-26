@@ -798,6 +798,36 @@ public class Application {
         new MenuItem(menu, SWT.SEPARATOR);
 
         item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Upload Packed CP/M binary");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleCompileAndUploadBinary();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Upload XModem binary");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleCompileAndUploadXModem();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        item = new MenuItem(menu, SWT.PUSH);
         item.setText("Serial Terminal\tCtrl+Shift+T");
         item.setAccelerator(SWT.MOD1 + SWT.MOD2 + 'T');
         item.addListener(SWT.Selection, new Listener() {
@@ -850,20 +880,7 @@ public class Application {
             }
         });
 
-        toolItem = new ToolItem(toolBar, SWT.PUSH);
-        toolItem.setImage(ImageRegistry.getImageFromResources("application_go.png"));
-        toolItem.setToolTipText("Upload Intel HEX");
-        toolItem.addSelectionListener(new SelectionAdapter() {
-
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                try {
-                    handleCompileAndUploadIntelHex();
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
-            }
-        });
+        createUploadToolItem(toolBar);
 
         new ToolItem(toolBar, SWT.SEPARATOR);
 
@@ -930,6 +947,98 @@ public class Application {
         });
 
         return toolBar;
+    }
+
+    void createUploadToolItem(ToolBar toolBar) {
+        final ToolItem toolItem = new ToolItem(toolBar, SWT.DROP_DOWN);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_go.png"));
+
+        final Menu menu = new Menu(shell, SWT.POP_UP);
+
+        MenuItem menuItem = new MenuItem(menu, SWT.RADIO);
+        menuItem.setText("Upload Intel HEX");
+        menuItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    if (((MenuItem) e.widget).getSelection()) {
+                        toolItem.setToolTipText(((MenuItem) e.widget).getText());
+                        preferences.setLastUploadType(menu.indexOf((MenuItem) e.widget));
+                        handleCompileAndUploadIntelHex();
+                    }
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        menuItem = new MenuItem(menu, SWT.RADIO);
+        menuItem.setText("Upload Packed CP/M binary");
+        menuItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    if (((MenuItem) e.widget).getSelection()) {
+                        toolItem.setToolTipText(((MenuItem) e.widget).getText());
+                        preferences.setLastUploadType(menu.indexOf((MenuItem) e.widget));
+                        handleCompileAndUploadBinary();
+                    }
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        menuItem = new MenuItem(menu, SWT.RADIO);
+        menuItem.setText("Upload XModem binary");
+        menuItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    if (((MenuItem) e.widget).getSelection()) {
+                        toolItem.setToolTipText(((MenuItem) e.widget).getText());
+                        preferences.setLastUploadType(menu.indexOf((MenuItem) e.widget));
+                        handleCompileAndUploadXModem();
+                    }
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        int selection = preferences.getLastUploadType();
+        if (selection < 0 || selection >= menu.getItemCount()) {
+            selection = 0;
+        }
+        menu.getItem(selection).setSelection(true);
+
+        toolItem.setToolTipText(menu.getItem(selection).getText());
+
+        toolItem.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event event) {
+                if (event.detail == SWT.ARROW) {
+                    Rectangle rect = toolItem.getBounds();
+                    Point pt = new Point(rect.x, rect.y + rect.height);
+                    pt = toolBar.toDisplay(pt);
+                    menu.setLocation(pt.x, pt.y);
+                    menu.setVisible(true);
+                }
+                else {
+                    MenuItem[] menuItem = menu.getItems();
+                    for (int i = 0; i < menuItem.length; i++) {
+                        if (menuItem[i].getSelection()) {
+                            menuItem[i].notifyListeners(SWT.Selection, new Event());
+                            break;
+                        }
+                    }
+                }
+            }
+        });
     }
 
     protected Control createContents(Composite parent) {
@@ -1605,16 +1714,6 @@ public class Application {
     private void handleOpenTerminal() {
         if (terminal == null) {
             terminal = new SerialTerminal();
-            terminal.setPort(preferences.getSerialPort());
-            terminal.setBaud(preferences.getSerialBaud());
-            terminal.addPropertyChangeListener(new PropertyChangeListener() {
-
-                @Override
-                public void propertyChange(PropertyChangeEvent evt) {
-                    preferences.setSerialPort(terminal.getPort());
-                    preferences.setSerialBaud(terminal.getBaud());
-                }
-            });
             terminal.open();
             terminal.getShell().addDisposeListener(new DisposeListener() {
 
@@ -1661,7 +1760,7 @@ public class Application {
                         return;
                     }
 
-                    display.asyncExec(new Runnable() {
+                    display.syncExec(new Runnable() {
 
                         @Override
                         public void run() {
@@ -1716,6 +1815,148 @@ public class Application {
         if (tabFolder.getSelection() != null) {
             tabFolder.getSelection().getControl().setFocus();
         }
+    }
+
+    private void handleCompileAndUploadBinary() throws Exception {
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+        console.clear();
+
+        final List<File> includePaths = new ArrayList<File>();
+        if (tab.getFile() != null) {
+            includePaths.add(tab.getFile().getParentFile());
+        }
+
+        final StringReader reader = new StringReader(tab.getEditor().getText());
+
+        final String name = tab.getText();
+        final File file = tab.getFile();
+
+        new Thread(new Runnable() {
+
+            PrintStream out;
+            IProgressMonitor monitor;
+            SerialPort serialPort;
+
+            @Override
+            public void run() {
+                out = new PrintStream(console.getOutputStream());
+
+                monitor = statusLine.getProgressMonitor();
+                monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
+
+                try {
+                    String baseName = name;
+                    if (baseName.indexOf('.') != -1) {
+                        baseName = baseName.substring(0, baseName.lastIndexOf('.'));
+                    }
+
+                    Source source = compile(reader, name, file, includePaths);
+                    if (source == null) {
+                        return;
+                    }
+
+                    display.syncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            handleOpenTerminal();
+                        }
+                    });
+
+                    serialPort = terminal.getSerialPort();
+                    byte[] data = source.generateObjectCode();
+
+                    monitor.beginTask("Upload", (data.length + 127) / 128);
+                    out.println("Sending to serial port " + serialPort.getPortName() + " ...");
+
+                    terminal.uploadPackedBinary(baseName + ".COM", data, monitor);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                out.println("Done");
+                monitor.done();
+            }
+
+        }).start();
+
+    }
+
+    private void handleCompileAndUploadXModem() throws Exception {
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+        console.clear();
+
+        final List<File> includePaths = new ArrayList<File>();
+        if (tab.getFile() != null) {
+            includePaths.add(tab.getFile().getParentFile());
+        }
+
+        final StringReader reader = new StringReader(tab.getEditor().getText());
+
+        final String name = tab.getText();
+        final File file = tab.getFile();
+
+        new Thread(new Runnable() {
+
+            PrintStream out;
+            IProgressMonitor monitor;
+            SerialPort serialPort;
+
+            @Override
+            public void run() {
+                out = new PrintStream(console.getOutputStream());
+
+                monitor = statusLine.getProgressMonitor();
+                monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
+
+                try {
+                    String baseName = name;
+                    if (baseName.indexOf('.') != -1) {
+                        baseName = baseName.substring(0, baseName.lastIndexOf('.'));
+                    }
+
+                    Source source = compile(reader, name, file, includePaths);
+                    if (source == null) {
+                        return;
+                    }
+
+                    display.syncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            handleOpenTerminal();
+                        }
+                    });
+
+                    serialPort = terminal.getSerialPort();
+                    byte[] data = source.generateObjectCode();
+
+                    monitor.beginTask("Upload", (data.length + 127) / 128);
+                    out.println("Sending to serial port " + serialPort.getPortName() + " ...");
+
+                    terminal.uploadXModem(baseName + ".COM", data, monitor);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                out.println("Done");
+                monitor.done();
+            }
+
+        }).start();
+
     }
 
     static {
