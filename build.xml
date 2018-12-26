@@ -224,6 +224,12 @@
             <fileset dir="lib" includes="jssc-2.8.0.jar"/>
         </copy>
 
+        <copy todir="${work}/${folder}/examples">
+            <fileset dir="examples">
+                <include name="**/*.ASM"/>
+            </fileset>
+        </copy>
+
         <copy todir="${work}/${folder}">
             <fileset file="LICENSE"/>
             <fileset file="LICENSE.glass"/>
