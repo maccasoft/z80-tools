@@ -54,7 +54,15 @@ public class Console {
 
         @Override
         public void write(final int b) throws IOException {
+            Display.getDefault().syncExec(new Runnable() {
 
+                @Override
+                public void run() {
+                    appendBytes(new byte[] {
+                        (byte) b
+                    }, 0, 1);
+                }
+            });
         }
 
         @Override

@@ -1826,6 +1826,7 @@ public class Z80 {
         }
 
         if (prefixOpcode != 0x00) {
+            execute();
             return;
         }
 
@@ -6479,6 +6480,10 @@ public class Z80 {
                 break;
             }
         }
+    }
+
+    public MemIoOps getMemIoOps() {
+        return MemIoImpl;
     }
 
 }

@@ -27,8 +27,10 @@ import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.databinding.observable.Realm;
@@ -52,6 +54,7 @@ import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.CaretEvent;
 import org.eclipse.swt.custom.CaretListener;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -73,6 +76,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
@@ -80,6 +84,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
+import com.maccasoft.tools.editor.Z80TokenMarker;
 import com.maccasoft.tools.internal.BusyIndicator;
 import com.maccasoft.tools.internal.ImageRegistry;
 
@@ -90,6 +95,9 @@ import nl.grauw.glass.Source;
 import nl.grauw.glass.SourceBuilder;
 import nl.grauw.glass.directives.Directive;
 import nl.grauw.glass.directives.Include;
+import z80core.MemIoOps;
+import z80core.NotifyOps;
+import z80core.Z80;
 
 public class Application {
 
@@ -99,14 +107,33 @@ public class Application {
     Display display;
     Shell shell;
 
+    Composite stack;
+    StackLayout stackLayout;
+
     SashForm sashForm1;
     FileBrowser browser;
     SashForm sashForm2;
     CTabFolder tabFolder;
     Console console;
+
+    Memory memory;
+    SourceViewer viewer;
+    Registers registers;
+    Label consolePlaceHolder;
+
     StatusLine statusLine;
 
     SerialTerminal terminal;
+
+    Z80 proc;
+    MemIoOps memIoOps;
+    int entryAddress;
+
+    Map<Integer, Line> list;
+
+    int stepOverPC1;
+    int stepOverPC2;
+    int stepOverSP;
 
     Preferences preferences;
 
@@ -179,6 +206,43 @@ public class Application {
             }
         }
 
+    };
+
+    final Runnable stepOverRunnable = new Runnable() {
+
+        @Override
+        public void run() {
+            if (stepOverPC1 == -1) {
+                return;
+            }
+
+            int currentPC = proc.getRegPC();
+            proc.execute();
+            if (proc.getRegPC() == stepOverPC1 || proc.getRegPC() == stepOverPC2 || (proc.getRegPC() != currentPC && proc.getRegSP() == stepOverSP)) {
+                updateDebuggerState();
+                return;
+            }
+
+            display.asyncExec(stepOverRunnable);
+        }
+    };
+
+    final Runnable runToLineRunnable = new Runnable() {
+
+        @Override
+        public void run() {
+            if (stepOverPC1 == -1) {
+                return;
+            }
+
+            proc.execute();
+            if (proc.getRegPC() == stepOverPC1) {
+                updateDebuggerState();
+                return;
+            }
+
+            display.asyncExec(runToLineRunnable);
+        }
     };
 
     public Application() {
@@ -843,6 +907,91 @@ public class Application {
         });
     }
 
+    void createDebugMenu(Menu parent, int index) {
+        Menu menu = new Menu(parent.getParent(), SWT.DROP_DOWN);
+
+        MenuItem menuItem = new MenuItem(parent, SWT.CASCADE, index);
+        menuItem.setText("&Debug");
+        menuItem.setMenu(menu);
+
+        MenuItem item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Step into\tF8");
+        item.setAccelerator(SWT.F8);
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleStep();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Step over\tF7");
+        item.setAccelerator(SWT.F7);
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleStepOver();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Run to line");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleRunToLine();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Stop");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleStop();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Reset\tF5");
+        item.setAccelerator(SWT.F5);
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleReset();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+    }
+
     void createHelpMenu(Menu parent) {
         Menu menu = new Menu(parent.getParent(), SWT.DROP_DOWN);
 
@@ -946,6 +1095,29 @@ public class Application {
             }
         });
 
+        new ToolItem(toolBar, SWT.SEPARATOR);
+
+        toolItem = new ToolItem(toolBar, SWT.CHECK);
+        toolItem.setImage(ImageRegistry.getImageFromResources("bug.png"));
+        toolItem.setToolTipText("Debug");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                boolean selection = ((ToolItem) e.widget).getSelection();
+                try {
+                    if (selection) {
+                        handleCompileAndDebug();
+                    }
+                    else {
+                        handleSwitchToEditor();
+                    }
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
         return toolBar;
     }
 
@@ -1042,6 +1214,20 @@ public class Application {
     }
 
     protected Control createContents(Composite parent) {
+        stack = new Composite(parent, SWT.NONE);
+        stackLayout = new StackLayout();
+        stackLayout.marginWidth = stackLayout.marginHeight = 0;
+        stack.setLayout(stackLayout);
+
+        createEditorContents(stack);
+        createDebuggerContents(stack);
+
+        stackLayout.topControl = stack.getChildren()[0];
+
+        return stack;
+    }
+
+    protected Control createEditorContents(Composite parent) {
         GC gc = new GC(parent);
         FontMetrics fontMetrics = gc.getFontMetrics();
         gc.dispose();
@@ -1246,6 +1432,39 @@ public class Application {
         browser.setFocus();
 
         return sashForm1;
+    }
+
+    protected Control createDebuggerContents(Composite parent) {
+        Composite container = new Composite(parent, SWT.NONE);
+        GridLayout gridLayout = new GridLayout(2, false);
+        gridLayout.marginWidth = gridLayout.marginHeight = 0;
+        container.setLayout(gridLayout);
+
+        memory = new Memory(container);
+        memory.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false));
+
+        SashForm sashForm = new SashForm(container, SWT.VERTICAL);
+        sashForm.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        Composite composite = new Composite(sashForm, SWT.NONE);
+        gridLayout = new GridLayout(2, false);
+        gridLayout.marginWidth = gridLayout.marginHeight = 0;
+        composite.setLayout(gridLayout);
+
+        viewer = new SourceViewer(composite, new Z80TokenMarker());
+        viewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        registers = new Registers(composite);
+        registers.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false));
+
+        consolePlaceHolder = new Label(sashForm, SWT.NONE);
+        consolePlaceHolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false));
+
+        sashForm.setWeights(new int[] {
+            80, 20
+        });
+
+        return container;
     }
 
     private void handleFileNew() {
@@ -1957,6 +2176,291 @@ public class Application {
 
         }).start();
 
+    }
+
+    private void handleCompileAndDebug() {
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+        console.clear();
+
+        final List<File> includePaths = new ArrayList<File>();
+        if (tab.getFile() != null) {
+            includePaths.add(tab.getFile().getParentFile());
+        }
+
+        final StringReader reader = new StringReader(tab.getEditor().getText());
+
+        final String name = tab.getText();
+        final File file = tab.getFile();
+
+        new Thread(new Runnable() {
+
+            PrintStream out;
+            IProgressMonitor monitor;
+
+            @Override
+            public void run() {
+                out = new PrintStream(console.getOutputStream());
+
+                monitor = statusLine.getProgressMonitor();
+                monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
+
+                try {
+                    Source source = compile(reader, name, file, includePaths);
+                    if (source == null) {
+                        return;
+                    }
+
+                    memIoOps = new MemIoOps() {
+
+                        @Override
+                        public void poke8(int address, int value) {
+                            memory.poke(address, value);
+                            super.poke8(address, value);
+                        }
+
+                        @Override
+                        public void outPort(int port, int value) {
+                            if ((port & 0xFF) == 0x81) {
+                                out.write(value);
+                            }
+                            super.outPort(port, value);
+                        }
+
+                    };
+
+                    memIoOps.getRam()[0] = (byte) 0xC3;
+                    memIoOps.getRam()[1] = 0x00;
+                    memIoOps.getRam()[2] = 0x01; // JP 0x100 CP/M TPA
+                    memIoOps.getRam()[5] = (byte) 0xC9; // Return from BDOS call
+
+                    memIoOps.getRam()[8] = (byte) 0xD3; // RST08
+                    memIoOps.getRam()[9] = (byte) 0x81;
+                    memIoOps.getRam()[10] = (byte) 0xC9;
+
+                    proc = new Z80(memIoOps, new NotifyOps() {
+
+                        @Override
+                        public int breakpoint(int address, int opcode) {
+
+                            // Emulate CP/M Syscall at address 5
+                            switch (proc.getRegC()) {
+                                case 0: // BDOS 0 System Reset
+                                    out.println("Z80 reset after " + memIoOps.getTstates() + " t-states");
+                                    break;
+                                case 2: // BDOS 2 console char output
+                                    out.write(proc.getRegE());
+                                    break;
+                                case 9: {// BDOS 9 console string output (string terminated by "$")
+                                    int strAddr = proc.getRegDE();
+                                    while (memIoOps.peek8(strAddr) != '$') {
+                                        out.write(memIoOps.peek8(strAddr++));
+                                    }
+                                    break;
+                                }
+                                default:
+                                    out.println("BDOS Call " + proc.getRegC());
+                                    break;
+                            }
+                            return opcode;
+                        }
+
+                        @Override
+                        public void execDone() {
+
+                        }
+
+                    });
+                    proc.setBreakpoint(0x0005, true);
+
+                    list = new HashMap<Integer, Line>();
+
+                    entryAddress = -1;
+
+                    for (Line line : source.getLines()) {
+                        int address = line.getScope().getAddress();
+                        byte[] code = line.getBytes();
+                        if (code.length != 0 && entryAddress == -1) {
+                            entryAddress = address;
+                        }
+                        System.arraycopy(code, 0, memIoOps.getRam(), address, code.length);
+                        list.put(address, line);
+                    }
+
+                    display.syncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            memory.setData(memIoOps.getRam());
+                            viewer.setSource(source);
+                            handleReset();
+
+                            reparentControls();
+
+                            Menu menuBar = shell.getMenuBar();
+                            createDebugMenu(menuBar, menuBar.getItemCount() - 1);
+
+                            stackLayout.topControl = stack.getChildren()[1];
+                            stack.layout(true, true);
+
+                            viewer.getControl().setFocus();
+                        }
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                out.println("Done");
+                monitor.done();
+            }
+
+        }).start();
+
+    }
+
+    private void handleSwitchToEditor() {
+        Menu menu = shell.getMenuBar();
+        menu.getItem(menu.getItemCount() - 2).dispose();
+
+        reparentControls();
+
+        stepOverPC1 = -1;
+
+        stackLayout.topControl = stack.getChildren()[0];
+        stack.layout(true, true);
+
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        tabItem.getControl().setFocus();
+    }
+
+    void reparentControls() {
+        Composite parent = consolePlaceHolder.getParent();
+        Object layoutData = consolePlaceHolder.getLayoutData();
+
+        consolePlaceHolder.setParent(console.getControl().getParent());
+        consolePlaceHolder.setLayoutData(console.getControl().getLayoutData());
+
+        console.getControl().setParent(parent);
+        console.getControl().setLayoutData(layoutData);
+    }
+
+    private void handleReset() {
+        stepOverPC1 = stepOverPC2 = -1;
+
+        memIoOps.reset();
+        memory.clearUpdates();
+        viewer.getControl().setFocus();
+
+        proc.setPinReset();
+        proc.reset();
+        proc.setRegPC(entryAddress);
+
+        memory.setSelection(entryAddress);
+
+        updateDebuggerState();
+    }
+
+    private void handleStep() {
+        stepOverPC1 = stepOverPC2 = -1;
+        memory.clearUpdates();
+        viewer.getControl().setFocus();
+
+        Line line = list.get(proc.getRegPC());
+        if (line != null) {
+            stepOverPC1 = proc.getRegPC() + line.getSize();
+            stepOverPC2 = memIoOps.peek16(proc.getRegSP());
+            stepOverSP = proc.getRegSP();
+            boolean repeat = isRepeatInstruction();
+
+            proc.execute();
+
+            if (repeat || list.get(proc.getRegPC()) == null) {
+                display.asyncExec(stepOverRunnable);
+                return;
+            }
+        }
+        else {
+            proc.execute();
+        }
+
+        updateDebuggerState();
+    }
+
+    boolean isRepeatInstruction() {
+        int pc = proc.getRegPC();
+        byte[] ram = memIoOps.getRam();
+        if ((ram[pc] & 0xFF) == 0xED) {
+            switch (ram[(pc + 1) & 0xFFFF]) {
+                case (byte) 0xB0: /* LDIR */
+                case (byte) 0xB1: /* CPIR */
+                case (byte) 0xB2: /* INIR */
+                case (byte) 0xB3: /* OTIR */
+                case (byte) 0xB8: /* LDDR */
+                case (byte) 0xB9: /* CPDR */
+                case (byte) 0xBA: /* INDR */
+                case (byte) 0xBB: /* OTDR */
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private void handleStepOver() {
+        stepOverPC1 = stepOverPC2 = -1;
+        memory.clearUpdates();
+        viewer.getControl().setFocus();
+
+        Line line = list.get(proc.getRegPC());
+        if (line != null) {
+            stepOverPC1 = proc.getRegPC() + line.getSize();
+            stepOverPC2 = memIoOps.peek16(proc.getRegSP());
+            stepOverSP = proc.getRegSP();
+            display.asyncExec(stepOverRunnable);
+        }
+        else {
+            proc.execute();
+            updateDebuggerState();
+        }
+    }
+
+    private void handleRunToLine() {
+        stepOverPC1 = stepOverPC2 = -1;
+        memory.clearUpdates();
+        viewer.getControl().setFocus();
+
+        int caretOffset = viewer.getStyledText().getCaretOffset();
+        int lineAtOffset = viewer.getStyledText().getLineAtOffset(caretOffset);
+
+        Line line = viewer.getSource().getLines().get(lineAtOffset);
+
+        if (line.getScope().getAddress() != proc.getRegPC()) {
+            stepOverPC1 = line.getScope().getAddress();
+            display.asyncExec(runToLineRunnable);
+        }
+    }
+
+    private void handleStop() {
+        stepOverPC1 = stepOverPC2 = -1;
+        memory.clearUpdates();
+        updateDebuggerState();
+    }
+
+    void updateDebuggerState() {
+        memory.update();
+        registers.updateRegisters(proc);
+
+        Line line = list.get(proc.getRegPC());
+        if (line != null) {
+            viewer.gotToLineColumn(line.getLineNumber(), 0);
+        }
     }
 
     static {
