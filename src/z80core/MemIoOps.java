@@ -38,6 +38,10 @@ public class MemIoOps {
         }
     }
 
+    public byte[] getRam() {
+        return z80Ram;
+    }
+
     public void setRam(byte ram[]) {
         z80Ram = ram;
     }
@@ -49,17 +53,17 @@ public class MemIoOps {
     public int fetchOpcode(int address) {
         // 3 clocks to fetch opcode from RAM and 1 execution clock
         tstates += 4;
-        return z80Ram[address] & 0xff;
+        return z80Ram[address & 0xFFFF] & 0xff;
     }
 
     public int peek8(int address) {
         tstates += 3; // 3 clocks for read byte from RAM
-        return z80Ram[address] & 0xff;
+        return z80Ram[address & 0xFFFF] & 0xff;
     }
 
     public void poke8(int address, int value) {
         tstates += 3; // 3 clocks for write byte to RAM
-        z80Ram[address] = (byte) value;
+        z80Ram[address & 0xFFFF] = (byte) value;
     }
 
     public int peek16(int address) {
@@ -75,12 +79,12 @@ public class MemIoOps {
 
     public int inPort(int port) {
         tstates += 4; // 4 clocks for read byte from bus
-        return z80Ports[port] & 0xff;
+        return z80Ports[port & 0xFFFF] & 0xff;
     }
 
     public void outPort(int port, int value) {
         tstates += 4; // 4 clocks for write byte to bus
-        z80Ports[port] = (byte) value;
+        z80Ports[port & 0xFFFF] = (byte) value;
     }
 
     public void addressOnBus(int address, int tstates) {
