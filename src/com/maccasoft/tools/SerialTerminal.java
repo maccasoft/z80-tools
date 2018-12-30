@@ -10,15 +10,13 @@
 
 package com.maccasoft.tools;
 
+import org.eclipse.core.databinding.observable.Realm;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.databinding.swt.DisplayRealm;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.dnd.Clipboard;
-import org.eclipse.swt.dnd.TextTransfer;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
-import org.eclipse.swt.events.KeyAdapter;
-import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -106,7 +104,7 @@ public class SerialTerminal extends Window {
 
                             @Override
                             public void run() {
-                                term.print(rx);
+                                term.write(rx);
                             }
                         });
                     }
@@ -116,135 +114,6 @@ public class SerialTerminal extends Window {
             }
         }
     };
-
-    final KeyAdapter vt100TerminalKeyListener = new KeyAdapter() {
-
-        @Override
-        public void keyPressed(KeyEvent e) {
-            try {
-                if (!serialPort.isOpened()) {
-                    return;
-                }
-                switch (e.keyCode) {
-                    case SWT.ARROW_UP:
-                        serialPort.writeByte((byte) 0x1B);
-                        serialPort.writeByte((byte) 'A');
-                        break;
-                    case SWT.ARROW_DOWN:
-                        serialPort.writeByte((byte) 0x1B);
-                        serialPort.writeByte((byte) 'B');
-                        break;
-                    case SWT.ARROW_LEFT:
-                        serialPort.writeByte((byte) 0x1B);
-                        serialPort.writeByte((byte) 'D');
-                        break;
-                    case SWT.ARROW_RIGHT:
-                        serialPort.writeByte((byte) 0x1B);
-                        serialPort.writeByte((byte) 'C');
-                        break;
-                    case SWT.HOME:
-                        serialPort.writeByte((byte) 0x1B);
-                        serialPort.writeByte((byte) 'H');
-                        break;
-                    case SWT.END:
-                        serialPort.writeByte((byte) 0x1B);
-                        serialPort.writeByte((byte) 'K');
-                        break;
-                    case SWT.F1:
-                    case SWT.F2:
-                    case SWT.F3:
-                    case SWT.F4:
-                    case SWT.F5:
-                    case SWT.F6:
-                    case SWT.F7:
-                    case SWT.F8:
-                    case SWT.F9:
-                    case SWT.F10:
-                        serialPort.writeByte((byte) 0x1B);
-                        serialPort.writeByte((byte) 'O');
-                        serialPort.writeByte((byte) ('P' + (e.keyCode - SWT.F1)));
-                        break;
-                    default:
-                        if (e.character != 0) {
-                            serialPort.writeByte((byte) e.character);
-                        }
-                        break;
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-    };
-
-    final KeyAdapter wordstarTerminalKeyListener = new KeyAdapter() {
-
-        @Override
-        public void keyPressed(KeyEvent e) {
-            try {
-                if (!serialPort.isOpened()) {
-                    return;
-                }
-                switch (e.keyCode) {
-                    case SWT.ARROW_UP:
-                        serialPort.writeByte((byte) 5);
-                        break;
-                    case SWT.ARROW_DOWN:
-                        serialPort.writeByte((byte) 24);
-                        break;
-                    case SWT.ARROW_LEFT:
-                        if ((e.stateMask & SWT.MOD2) != 0) {
-                            serialPort.writeByte((byte) 1);
-                        }
-                        else {
-                            serialPort.writeByte((byte) 19);
-                        }
-                        break;
-                    case SWT.ARROW_RIGHT:
-                        if ((e.stateMask & SWT.MOD2) != 0) {
-                            serialPort.writeByte((byte) 6);
-                        }
-                        else {
-                            serialPort.writeByte((byte) 4);
-                        }
-                        break;
-                    case SWT.INSERT:
-                        if ((e.stateMask & SWT.MOD2) != 0) {
-                            pasteFromClipboard();
-                        }
-                        else {
-                            serialPort.writeByte((byte) 22);
-                        }
-                        break;
-                    case SWT.HOME:
-                        serialPort.writeByte((byte) 17);
-                        serialPort.writeByte((byte) 'S');
-                        break;
-                    case SWT.END:
-                        serialPort.writeByte((byte) 17);
-                        serialPort.writeByte((byte) 'D');
-                        break;
-                    case SWT.PAGE_UP:
-                        serialPort.writeByte((byte) 18);
-                        break;
-                    case SWT.PAGE_DOWN:
-                        serialPort.writeByte((byte) 3);
-                        break;
-                    default:
-                        if (e.character == SWT.DEL) {
-                            serialPort.writeByte((byte) 7);
-                        }
-                        else if (e.character != 0) {
-                            serialPort.writeByte((byte) e.character);
-                        }
-                        break;
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-    };
-
-    KeyAdapter currentKeyListener;
 
     public SerialTerminal() {
         super((Shell) null);
@@ -279,7 +148,21 @@ public class SerialTerminal extends Window {
         layout.marginWidth = layout.marginHeight = 0;
         container.setLayout(layout);
 
-        term = new Terminal(container);
+        term = new Terminal(container) {
+
+            @Override
+            protected void writeByte(byte b) {
+                try {
+                    if (!serialPort.isOpened()) {
+                        return;
+                    }
+                    serialPort.writeByte(b);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+        };
         Rectangle rect = term.getBounds();
         GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
         gridData.widthHint = rect.width;
@@ -288,9 +171,6 @@ public class SerialTerminal extends Window {
 
         createBottomControls(container);
         updateSerialPortSettings();
-
-        currentKeyListener = vt100TerminalKeyListener;
-        term.addKeyListener(currentKeyListener);
 
         container.addDisposeListener(new DisposeListener() {
 
@@ -319,7 +199,7 @@ public class SerialTerminal extends Window {
         int index;
 
         Composite container = new Composite(parent, SWT.NONE);
-        GridLayout layout = new GridLayout(7, false);
+        GridLayout layout = new GridLayout(1, false);
         layout.marginBottom = layout.marginHeight;
         layout.marginLeft = layout.marginRight = layout.marginWidth;
         layout.marginWidth = layout.marginHeight = 0;
@@ -339,16 +219,14 @@ public class SerialTerminal extends Window {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                term.removeKeyListener(currentKeyListener);
                 switch (cursorKeys.getSelectionIndex()) {
                     case 0:
-                        currentKeyListener = vt100TerminalKeyListener;
+                        term.setCursorKeys(Terminal.CURSORS_VT100);
                         break;
                     case 1:
-                        currentKeyListener = wordstarTerminalKeyListener;
+                        term.setCursorKeys(Terminal.CURSORS_WORDSTAR);
                         break;
                 }
-                term.addKeyListener(currentKeyListener);
                 term.setFocus();
             }
         });
@@ -383,6 +261,8 @@ public class SerialTerminal extends Window {
         }
         baudRate.select(index);
         baudRate.addSelectionListener(baudRateSelectionListener);
+
+        layout.numColumns = container.getChildren().length;
     }
 
     void updateSerialPortSettings() {
@@ -425,29 +305,6 @@ public class SerialTerminal extends Window {
 
     public SerialPort getSerialPort() {
         return serialPort;
-    }
-
-    void pasteFromClipboard() {
-        Clipboard clipboard = new Clipboard(display);
-        try {
-            final String s = (String) clipboard.getContents(TextTransfer.getInstance());
-            if (s != null) {
-                new Thread(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        try {
-                            serialPort.writeString(s);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                }).start();
-            }
-        } finally {
-            clipboard.dispose();
-        }
     }
 
     public void dispose() {
@@ -567,7 +424,7 @@ public class SerialTerminal extends Window {
 
             @Override
             public void run() {
-                term.print(b);
+                term.write(b);
             }
         });
     }
@@ -731,6 +588,36 @@ public class SerialTerminal extends Window {
             }
         }
         return crc & 0xFFFF;
+    }
+
+    static {
+        System.setProperty("SWT_GTK3", "0");
+    }
+
+    public static void main(String[] args) {
+        final Display display = new Display();
+
+        Realm.runWithDefault(DisplayRealm.getRealm(display), new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    SerialTerminal app = new SerialTerminal();
+                    app.open();
+
+                    while (display.getShells().length != 0) {
+                        if (!display.readAndDispatch()) {
+                            display.sleep();
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return;
+                }
+            }
+        });
+
+        display.dispose();
     }
 
 }

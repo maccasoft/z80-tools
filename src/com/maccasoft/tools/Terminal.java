@@ -11,10 +11,14 @@
 package com.maccasoft.tools;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.dnd.Clipboard;
+import org.eclipse.swt.dnd.TextTransfer;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
@@ -41,6 +45,9 @@ public class Terminal {
     public static final int CURSOR_FLASH = 0x01;
     public static final int CURSOR_SOLID = 0x00;
 
+    public static final int CURSORS_VT100 = 0;
+    public static final int CURSORS_WORDSTAR = 1;
+
     Display display;
     Canvas canvas;
     Image image;
@@ -49,6 +56,7 @@ public class Terminal {
 
     TerminalFont font;
     Color[] colors;
+    int cursorKeys;
 
     int cx;
     int cy;
@@ -196,6 +204,29 @@ public class Terminal {
             }
         });
 
+        canvas.addKeyListener(new KeyAdapter() {
+
+            @Override
+            public void keyPressed(KeyEvent event) {
+                try {
+                    if (event.keyCode == SWT.INSERT && (event.stateMask & SWT.MOD2) != 0) {
+                        pasteFromClipboard();
+                        return;
+                    }
+                    switch (cursorKeys) {
+                        case CURSORS_VT100:
+                            onVT100KeyPressed(event);
+                            break;
+                        case CURSORS_WORDSTAR:
+                            onWordStarKeyPressed(event);
+                            break;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
         state = 0;
         argc = 0;
         args = new int[32];
@@ -209,6 +240,144 @@ public class Terminal {
         cursorState = (cursor & CURSOR_ON) != 0 && (cursor & CURSOR_FLASH) == 0;
 
         display.timerExec(BLINK_TIMER, blinkRunnable);
+    }
+
+    public int getCursorKeys() {
+        return cursorKeys;
+    }
+
+    public void setCursorKeys(int cursorKeys) {
+        this.cursorKeys = cursorKeys;
+    }
+
+    void onVT100KeyPressed(KeyEvent e) {
+        switch (e.keyCode) {
+            case SWT.ARROW_UP:
+                writeByte((byte) 0x1B);
+                writeByte((byte) 'A');
+                break;
+            case SWT.ARROW_DOWN:
+                writeByte((byte) 0x1B);
+                writeByte((byte) 'B');
+                break;
+            case SWT.ARROW_LEFT:
+                writeByte((byte) 0x1B);
+                writeByte((byte) 'D');
+                break;
+            case SWT.ARROW_RIGHT:
+                writeByte((byte) 0x1B);
+                writeByte((byte) 'C');
+                break;
+            case SWT.HOME:
+                writeByte((byte) 0x1B);
+                writeByte((byte) 'H');
+                break;
+            case SWT.END:
+                writeByte((byte) 0x1B);
+                writeByte((byte) 'K');
+                break;
+            case SWT.F1:
+            case SWT.F2:
+            case SWT.F3:
+            case SWT.F4:
+            case SWT.F5:
+            case SWT.F6:
+            case SWT.F7:
+            case SWT.F8:
+            case SWT.F9:
+            case SWT.F10:
+                writeByte((byte) 0x1B);
+                writeByte((byte) 'O');
+                writeByte((byte) ('P' + (e.keyCode - SWT.F1)));
+                break;
+            default:
+                if (e.character != 0) {
+                    writeByte((byte) e.character);
+                }
+                break;
+        }
+    }
+
+    void onWordStarKeyPressed(KeyEvent e) {
+        switch (e.keyCode) {
+            case SWT.ARROW_UP:
+                writeByte((byte) 5);
+                break;
+            case SWT.ARROW_DOWN:
+                writeByte((byte) 24);
+                break;
+            case SWT.ARROW_LEFT:
+                if ((e.stateMask & SWT.MOD2) != 0) {
+                    writeByte((byte) 1);
+                }
+                else {
+                    writeByte((byte) 19);
+                }
+                break;
+            case SWT.ARROW_RIGHT:
+                if ((e.stateMask & SWT.MOD2) != 0) {
+                    writeByte((byte) 6);
+                }
+                else {
+                    writeByte((byte) 4);
+                }
+                break;
+            case SWT.INSERT:
+                writeByte((byte) 22);
+                break;
+            case SWT.HOME:
+                writeByte((byte) 17);
+                writeByte((byte) 'S');
+                break;
+            case SWT.END:
+                writeByte((byte) 17);
+                writeByte((byte) 'D');
+                break;
+            case SWT.PAGE_UP:
+                writeByte((byte) 18);
+                break;
+            case SWT.PAGE_DOWN:
+                writeByte((byte) 3);
+                break;
+            default:
+                if (e.character == SWT.DEL) {
+                    writeByte((byte) 7);
+                }
+                else if (e.character != 0) {
+                    writeByte((byte) e.character);
+                }
+                break;
+        }
+    }
+
+    void pasteFromClipboard() {
+        Clipboard clipboard = new Clipboard(display);
+        try {
+            String s = (String) clipboard.getContents(TextTransfer.getInstance());
+            if (s != null) {
+                final byte[] b = s.getBytes();
+                new Thread(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        try {
+                            for (int i = 0; i < b.length; i++) {
+                                writeByte(b[i]);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                }).start();
+            }
+        } finally {
+            clipboard.dispose();
+        }
+    }
+
+    protected void writeByte(byte b) {
+
     }
 
     public void setLayoutData(Object data) {
@@ -231,250 +400,278 @@ public class Terminal {
         return canvas.getBounds();
     }
 
-    public void print(int c) {
-        int p0;
-
+    public void write(int c) {
         GC gc = new GC(image);
         try {
-            canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
-            if (state == 0) {
-                if (c == 0x1B) {
-                    state = 1;
-                    argc = -1;
-                    return;
-                }
-            }
-            if (state == 1) {
-                state = (c == '[') ? (state + 1) : 0;
+            write(gc, c);
+        } finally {
+            gc.dispose();
+        }
+    }
+
+    void write(GC gc, int c) {
+        int p0;
+
+        canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
+        if (state == 0) {
+            if (c == 0x1B) {
+                state = 1;
+                argc = -1;
                 return;
             }
-            if (state == 2) {
-                if (c >= '0' && c <= '9') {
-                    if (argc == -1) {
-                        argc++;
-                        args[argc] = 0;
-                    }
-                    args[argc] = args[argc] * 10 + (c - '0');
-                    return;
-                }
-                if (c == ';') {
+        }
+        if (state == 1) {
+            state = (c == '[') ? (state + 1) : 0;
+            return;
+        }
+        if (state == 2) {
+            if (c >= '0' && c <= '9') {
+                if (argc == -1) {
                     argc++;
                     args[argc] = 0;
-                    return;
                 }
-                argc++;
-                switch (c) {
-                    case '?':
-                        state++;
-                        return;
-                    case 'A':
-                        cy -= (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getHeight();
-                        if (cy < 0) {
-                            cy = 0;
-                        }
-                        break;
-                    case 'B':
-                        cy += (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getHeight();
-                        while (cy >= bounds.height) {
-                            cy -= font.getHeight();
-                        }
-                        break;
-                    case 'C':
-                        cx += (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getWidth();
-                        while (cx >= bounds.width) {
-                            cx -= font.getWidth();
-                        }
-                        break;
-                    case 'D':
-                        cx -= (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getWidth();
-                        if (cx < 0) {
-                            cx = 0;
-                        }
-                        break;
-                    case 'H':
-                    case 'f':
-                        if (argc == 0) {
-                            cx = cy = 0;
-                        }
-                        else if (argc >= 2) {
-                            cy = (args[0] > 0 ? (args[0] - 1) : 0) * font.getHeight();
-                            cx = (args[1] > 0 ? (args[1] - 1) : 0) * font.getWidth();
-                        }
-                        break;
-                    case 'J': {
-                        gc.setBackground(colors[background]);
-                        if (argc == 0 || args[0] == 0) {
-                            gc.fillRectangle(cx, cy, bounds.width - cx, bounds.height - cy);
-                        }
-                        else if (args[0] == 1) {
-                            gc.fillRectangle(0, 0, cx + font.getWidth() - 1, cy + font.getHeight() - 1);
-                        }
-                        else if (args[0] == 2) {
-                            gc.fillRectangle(0, 0, bounds.width, bounds.height);
-                        }
-                        canvas.redraw();
-                        break;
-                    }
-                    case 'K': {
-                        gc.setBackground(colors[background]);
-                        if (argc == 0 || args[0] == 0) {
-                            gc.fillRectangle(cx, cy, bounds.width - cx, font.getHeight() - 1);
-                        }
-                        else if (args[0] == 1) {
-                            gc.fillRectangle(0, cy, cx, font.getHeight() - 1);
-                        }
-                        else if (args[0] == 2) {
-                            gc.fillRectangle(0, 0, bounds.width, font.getHeight() - 1);
-                        }
-                        canvas.redraw();
-                        break;
-                    }
-                    case 'L': {
-                        Image temp = new Image(image.getDevice(), bounds.width, bounds.height - cy - font.getHeight());
-                        gc.copyArea(temp, 0, cy);
-                        gc.drawImage(temp, 0, cy + font.getHeight());
-                        gc.setBackground(colors[background]);
-                        gc.fillRectangle(0, cy, bounds.width, font.getHeight());
-                        temp.dispose();
-                        canvas.redraw();
-                        break;
-                    }
-                    case 'M': {
-                        gc.copyArea(0, cy + font.getHeight(), bounds.width, bounds.height - cy - font.getHeight(), 0, cy);
-                        gc.setBackground(colors[background]);
-                        gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
-                        canvas.redraw();
-                        break;
-                    }
-                    case 'm': {
-                        for (int i = 0; i < argc; i++) {
-                            if (args[i] == 0) {
-                                background = 0;
-                                foreground = 7;
-                            }
-                            else if (args[i] == 1) {
-                                foreground |= 8;
-                            }
-                            else if (args[i] == 2) {
-                                foreground &= 7;
-                            }
-                            else if (args[i] == 5) {
-                                cursor |= CURSOR_FLASH;
-                            }
-                            else if (args[i] == 7) {
-                                int t = foreground;
-                                foreground = background;
-                                background = t & 0x07;
-                            }
-                            else if (args[i] == 25) {
-                                cursor &= ~CURSOR_FLASH;
-                            }
-                            else if (args[i] >= 30 && args[i] <= 37) {
-                                foreground = (foreground & 0x08) | (args[i] - 30);
-                            }
-                            else if (args[i] >= 40 && args[i] <= 47) {
-                                background = args[i] - 40;
-                            }
-                        }
-                        if (argc == 0) {
-                            background = 0;
-                            foreground = 7;
-                        }
-                        font.setForeground(paletteData.colors[foreground]);
-                        font.setBackground(paletteData.colors[background]);
-                        break;
-                    }
-                    case 's':
-                        savedCx = cx;
-                        savedCy = cy;
-                        break;
-                    case 'u':
-                        cx = savedCx;
-                        cy = savedCy;
-                        break;
-                    case 'q':
-                        if (argc == 0) {
-                            cursor = CURSOR_ON | CURSOR_FLASH | CURSOR_BLOCK;
-                        }
-                        else if (args[0] == 0 || args[0] == 1) {
-                            cursor = CURSOR_ON | CURSOR_FLASH | CURSOR_BLOCK;
-                        }
-                        else if (args[0] == 2) {
-                            cursor = CURSOR_ON | CURSOR_SOLID | CURSOR_BLOCK;
-                        }
-                        else if (args[0] == 3) {
-                            cursor = CURSOR_ON | CURSOR_FLASH | CURSOR_ULINE;
-                        }
-                        else if (args[0] == 4) {
-                            cursor = CURSOR_ON | CURSOR_SOLID | CURSOR_ULINE;
-                        }
-                        break;
-                }
-                state = 0;
+                args[argc] = args[argc] * 10 + (c - '0');
                 return;
             }
-            if (state == 3) {
-                if (c >= '0' && c <= '9') {
-                    if (argc == -1) {
-                        argc++;
-                        args[argc] = 0;
-                    }
-                    args[argc] = args[argc] * 10 + (c - '0');
-                    return;
-                }
-                if (c == ';') {
-                    argc++;
-                    args[argc] = 0;
-                    return;
-                }
+            if (c == ';') {
                 argc++;
-                switch (c) {
-                    case 'h':
-                        if (argc >= 1) {
-                            switch (args[0]) {
-                                case 12:
-                                    cursor |= CURSOR_FLASH;
-                                    break;
-                                case 25:
-                                    cursor |= CURSOR_ON;
-                                    break;
-                            }
-                        }
-                        break;
-                    case 'l':
-                        if (argc >= 1) {
-                            switch (args[0]) {
-                                case 12:
-                                    cursor &= ~CURSOR_FLASH;
-                                    break;
-                                case 25:
-                                    cursor &= ~CURSOR_ON;
-                                    break;
-                            }
-                        }
-                        break;
-                }
-                state = 0;
+                args[argc] = 0;
                 return;
             }
+            argc++;
             switch (c) {
-                case 0x08:
-                    if (cx >= font.getWidth()) {
+                case '?':
+                    state++;
+                    return;
+                case 'A':
+                    cy -= (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getHeight();
+                    if (cy < 0) {
+                        cy = 0;
+                    }
+                    break;
+                case 'B':
+                    cy += (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getHeight();
+                    while (cy >= bounds.height) {
+                        cy -= font.getHeight();
+                    }
+                    break;
+                case 'C':
+                    cx += (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getWidth();
+                    while (cx >= bounds.width) {
                         cx -= font.getWidth();
                     }
-                    else {
+                    break;
+                case 'D':
+                    cx -= (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getWidth();
+                    if (cx < 0) {
                         cx = 0;
                     }
                     break;
-                case 0x09:
-                    p0 = cx / font.getWidth();
-                    p0 = ((p0 / 8) + 1) * 8;
-                    if (p0 > (bounds.width / font.getWidth())) {
-                        p0 = 0;
+                case 'H':
+                case 'f':
+                    if (argc == 0) {
+                        cx = cy = 0;
                     }
-                    cx = p0 * font.getWidth();
+                    else if (argc >= 2) {
+                        cy = (args[0] > 0 ? (args[0] - 1) : 0) * font.getHeight();
+                        cx = (args[1] > 0 ? (args[1] - 1) : 0) * font.getWidth();
+                    }
                     break;
-                case 0x0A:
+                case 'J': {
+                    gc.setBackground(colors[background]);
+                    if (argc == 0 || args[0] == 0) {
+                        gc.fillRectangle(cx, cy, bounds.width - cx, bounds.height - cy);
+                    }
+                    else if (args[0] == 1) {
+                        gc.fillRectangle(0, 0, cx + font.getWidth() - 1, cy + font.getHeight() - 1);
+                    }
+                    else if (args[0] == 2) {
+                        gc.fillRectangle(0, 0, bounds.width, bounds.height);
+                    }
+                    canvas.redraw();
+                    break;
+                }
+                case 'K': {
+                    gc.setBackground(colors[background]);
+                    if (argc == 0 || args[0] == 0) {
+                        gc.fillRectangle(cx, cy, bounds.width - cx, font.getHeight() - 1);
+                    }
+                    else if (args[0] == 1) {
+                        gc.fillRectangle(0, cy, cx, font.getHeight() - 1);
+                    }
+                    else if (args[0] == 2) {
+                        gc.fillRectangle(0, 0, bounds.width, font.getHeight() - 1);
+                    }
+                    canvas.redraw();
+                    break;
+                }
+                case 'L': {
+                    Image temp = new Image(image.getDevice(), bounds.width, bounds.height - cy - font.getHeight());
+                    gc.copyArea(temp, 0, cy);
+                    gc.drawImage(temp, 0, cy + font.getHeight());
+                    gc.setBackground(colors[background]);
+                    gc.fillRectangle(0, cy, bounds.width, font.getHeight());
+                    temp.dispose();
+                    canvas.redraw();
+                    break;
+                }
+                case 'M': {
+                    gc.copyArea(0, cy + font.getHeight(), bounds.width, bounds.height - cy - font.getHeight(), 0, cy);
+                    gc.setBackground(colors[background]);
+                    gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
+                    canvas.redraw();
+                    break;
+                }
+                case 'm': {
+                    for (int i = 0; i < argc; i++) {
+                        if (args[i] == 0) {
+                            background = 0;
+                            foreground = 7;
+                        }
+                        else if (args[i] == 1) {
+                            foreground |= 8;
+                        }
+                        else if (args[i] == 2) {
+                            foreground &= 7;
+                        }
+                        else if (args[i] == 5) {
+                            cursor |= CURSOR_FLASH;
+                        }
+                        else if (args[i] == 7) {
+                            int t = foreground;
+                            foreground = background;
+                            background = t & 0x07;
+                        }
+                        else if (args[i] == 25) {
+                            cursor &= ~CURSOR_FLASH;
+                        }
+                        else if (args[i] >= 30 && args[i] <= 37) {
+                            foreground = (foreground & 0x08) | (args[i] - 30);
+                        }
+                        else if (args[i] >= 40 && args[i] <= 47) {
+                            background = args[i] - 40;
+                        }
+                    }
+                    if (argc == 0) {
+                        background = 0;
+                        foreground = 7;
+                    }
+                    font.setForeground(paletteData.colors[foreground]);
+                    font.setBackground(paletteData.colors[background]);
+                    break;
+                }
+                case 's':
+                    savedCx = cx;
+                    savedCy = cy;
+                    break;
+                case 'u':
+                    cx = savedCx;
+                    cy = savedCy;
+                    break;
+                case 'q':
+                    if (argc == 0) {
+                        cursor = CURSOR_ON | CURSOR_FLASH | CURSOR_BLOCK;
+                    }
+                    else if (args[0] == 0 || args[0] == 1) {
+                        cursor = CURSOR_ON | CURSOR_FLASH | CURSOR_BLOCK;
+                    }
+                    else if (args[0] == 2) {
+                        cursor = CURSOR_ON | CURSOR_SOLID | CURSOR_BLOCK;
+                    }
+                    else if (args[0] == 3) {
+                        cursor = CURSOR_ON | CURSOR_FLASH | CURSOR_ULINE;
+                    }
+                    else if (args[0] == 4) {
+                        cursor = CURSOR_ON | CURSOR_SOLID | CURSOR_ULINE;
+                    }
+                    break;
+            }
+            state = 0;
+            return;
+        }
+        if (state == 3) {
+            if (c >= '0' && c <= '9') {
+                if (argc == -1) {
+                    argc++;
+                    args[argc] = 0;
+                }
+                args[argc] = args[argc] * 10 + (c - '0');
+                return;
+            }
+            if (c == ';') {
+                argc++;
+                args[argc] = 0;
+                return;
+            }
+            argc++;
+            switch (c) {
+                case 'h':
+                    if (argc >= 1) {
+                        switch (args[0]) {
+                            case 12:
+                                cursor |= CURSOR_FLASH;
+                                break;
+                            case 25:
+                                cursor |= CURSOR_ON;
+                                break;
+                        }
+                    }
+                    break;
+                case 'l':
+                    if (argc >= 1) {
+                        switch (args[0]) {
+                            case 12:
+                                cursor &= ~CURSOR_FLASH;
+                                break;
+                            case 25:
+                                cursor &= ~CURSOR_ON;
+                                break;
+                        }
+                    }
+                    break;
+            }
+            state = 0;
+            return;
+        }
+        switch (c) {
+            case 0x08:
+                if (cx >= font.getWidth()) {
+                    cx -= font.getWidth();
+                }
+                else {
+                    cx = 0;
+                }
+                break;
+            case 0x09:
+                p0 = cx / font.getWidth();
+                p0 = ((p0 / 8) + 1) * 8;
+                if (p0 > (bounds.width / font.getWidth())) {
+                    p0 = 0;
+                }
+                cx = p0 * font.getWidth();
+                break;
+            case 0x0A:
+                cy += font.getHeight();
+                if (cy >= bounds.height) {
+                    gc.copyArea(0, font.getHeight(), bounds.width, bounds.height - font.getHeight(), 0, 0);
+                    gc.setBackground(colors[background]);
+                    gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
+                    cy -= font.getHeight();
+                    canvas.redraw();
+                }
+                break;
+            case 0x0C:
+                cx = cy = 0;
+                gc.setBackground(colors[background]);
+                gc.fillRectangle(bounds);
+                canvas.redraw();
+                break;
+            case 0x0D:
+                cx = 0;
+                break;
+            default:
+                if (cx >= bounds.width) {
+                    cx = 0;
                     cy += font.getHeight();
                     if (cy >= bounds.height) {
                         gc.copyArea(0, font.getHeight(), bounds.width, bounds.height - font.getHeight(), 0, 0);
@@ -483,49 +680,35 @@ public class Terminal {
                         cy -= font.getHeight();
                         canvas.redraw();
                     }
-                    break;
-                case 0x0C:
-                    cx = cy = 0;
-                    gc.setBackground(colors[background]);
-                    gc.fillRectangle(bounds);
-                    canvas.redraw();
-                    break;
-                case 0x0D:
-                    cx = 0;
-                    break;
-                default:
-                    if (cx >= bounds.width) {
-                        cx = 0;
-                        cy += font.getHeight();
-                        if (cy >= bounds.height) {
-                            gc.copyArea(0, font.getHeight(), bounds.width, bounds.height - font.getHeight(), 0, 0);
-                            gc.setBackground(colors[background]);
-                            gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
-                            cy -= font.getHeight();
-                            canvas.redraw();
-                        }
-                    }
+                }
 
-                    font.print(gc, c, cx, cy);
-                    canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
+                font.print(gc, c, cx, cy);
+                canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
 
-                    cx += font.getWidth();
-                    break;
+                cx += font.getWidth();
+                break;
+        }
+    }
+
+    public void print(String s) {
+        GC gc = new GC(image);
+        try {
+            for (int i = 0; i < s.length(); i++) {
+                write(gc, s.charAt(i));
             }
         } finally {
             gc.dispose();
         }
     }
 
-    public void print(String s) {
-        for (int i = 0; i < s.length(); i++) {
-            print(s.charAt(i));
-        }
-    }
-
-    public void print(byte[] b) {
-        for (int i = 0; i < b.length; i++) {
-            print(b[i]);
+    public void write(byte[] b) {
+        GC gc = new GC(image);
+        try {
+            for (int i = 0; i < b.length; i++) {
+                write(gc, b[i]);
+            }
+        } finally {
+            gc.dispose();
         }
     }
 

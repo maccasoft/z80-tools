@@ -124,6 +124,7 @@ public class Application {
     StatusLine statusLine;
 
     SerialTerminal terminal;
+    DebugTerminal debugTerminal;
 
     Z80 proc;
     MemIoOps memIoOps;
@@ -319,6 +320,10 @@ public class Application {
                 if (terminal != null) {
                     terminal.dispose();
                     terminal = null;
+                }
+                if (debugTerminal != null) {
+                    debugTerminal.dispose();
+                    debugTerminal = null;
                 }
                 try {
                     preferences.removePropertyChangeListener(preferencesChangeListner);
@@ -1112,6 +1117,21 @@ public class Application {
                     else {
                         handleSwitchToEditor();
                     }
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        toolItem = new ToolItem(toolBar, SWT.PUSH);
+        toolItem.setImage(ImageRegistry.getImageFromResources("application_xp_terminal.png"));
+        toolItem.setToolTipText("Debug Terminal");
+        toolItem.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                try {
+                    handleOpenDebugTerminal();
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -2217,6 +2237,11 @@ public class Application {
 
                     memIoOps = new MemIoOps() {
 
+                        public final static int SIOA_D = 0x81;
+                        public final static int SIOA_C = 0x80;
+                        public final static int SIOB_D = 0x83;
+                        public final static int SIOB_C = 0x82;
+
                         @Override
                         public void poke8(int address, int value) {
                             memory.poke(address, value);
@@ -2224,11 +2249,51 @@ public class Application {
                         }
 
                         @Override
-                        public void outPort(int port, int value) {
-                            if ((port & 0xFF) == 0x81) {
-                                out.write(value);
+                        public int inPort(int port) {
+                            int result = super.inPort(port & 0xFF);
+                            switch (port & 0xFF) {
+                                case SIOA_C: {
+                                    try {
+                                        if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
+                                            return 0x04 + 0x01;
+                                        }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                    return 0x04; // Always return TX buffer empty
+                                }
+                                case SIOA_D: {
+                                    try {
+                                        if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
+                                            return debugTerminal.getInputStream().read();
+                                        }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                    break;
+                                }
+                                case SIOB_C:
+                                    return 0x04; // Always return TX buffer empty
                             }
-                            super.outPort(port, value);
+                            return result;
+                        }
+
+                        @Override
+                        public void outPort(int port, int value) {
+                            switch (port & 0xFF) {
+                                case SIOA_D:
+                                    if (debugTerminal != null) {
+                                        debugTerminal.write(value);
+                                    }
+                                    else {
+                                        out.write(value);
+                                    }
+                                    break;
+                                case SIOB_D:
+                                    out.write(value);
+                                    break;
+                            }
+                            super.outPort(port & 0xFF, value);
                         }
 
                     };
@@ -2253,12 +2318,24 @@ public class Application {
                                     out.println("Z80 reset after " + memIoOps.getTstates() + " t-states");
                                     break;
                                 case 2: // BDOS 2 console char output
-                                    out.write(proc.getRegE());
+                                    if (debugTerminal != null) {
+                                        debugTerminal.write(proc.getRegE());
+                                    }
+                                    else {
+                                        out.write(proc.getRegE());
+                                    }
                                     break;
                                 case 9: {// BDOS 9 console string output (string terminated by "$")
                                     int strAddr = proc.getRegDE();
-                                    while (memIoOps.peek8(strAddr) != '$') {
-                                        out.write(memIoOps.peek8(strAddr++));
+                                    if (debugTerminal != null) {
+                                        while (memIoOps.peek8(strAddr) != '$') {
+                                            debugTerminal.write(memIoOps.peek8(strAddr++));
+                                        }
+                                    }
+                                    else {
+                                        while (memIoOps.peek8(strAddr) != '$') {
+                                            out.write(memIoOps.peek8(strAddr++));
+                                        }
                                     }
                                     break;
                                 }
@@ -2354,6 +2431,16 @@ public class Application {
 
     private void handleReset() {
         stepOverPC1 = stepOverPC2 = -1;
+
+        if (debugTerminal != null) {
+            try {
+                while (debugTerminal.getInputStream().available() > 0) {
+                    debugTerminal.getInputStream().read();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         memIoOps.reset();
         memory.clearUpdates();
@@ -2461,6 +2548,21 @@ public class Application {
         if (line != null) {
             viewer.gotToLineColumn(line.getLineNumber(), 0);
         }
+    }
+
+    private void handleOpenDebugTerminal() {
+        if (debugTerminal == null) {
+            debugTerminal = new DebugTerminal();
+            debugTerminal.open();
+            debugTerminal.getShell().addDisposeListener(new DisposeListener() {
+
+                @Override
+                public void widgetDisposed(DisposeEvent e) {
+                    debugTerminal = null;
+                }
+            });
+        }
+        debugTerminal.setFocus();
     }
 
     static {
