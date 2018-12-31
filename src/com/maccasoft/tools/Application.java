@@ -56,6 +56,9 @@ import org.eclipse.swt.custom.CaretListener;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.dnd.Clipboard;
+import org.eclipse.swt.dnd.TextTransfer;
+import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.MenuEvent;
@@ -699,6 +702,34 @@ public class Application {
                         return;
                     }
                     ((SourceEditorTab) tabItem.getData()).getEditor().copy();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Copy Packed CP/M Binary");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleCompileAndCopyBinaryToClipboard();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Copy Intel HEX");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleCompileAndCopyIntelHexToClipboard();
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -2563,6 +2594,152 @@ public class Application {
             });
         }
         debugTerminal.setFocus();
+    }
+
+    private void handleCompileAndCopyIntelHexToClipboard() throws Exception {
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+        console.clear();
+
+        final List<File> includePaths = new ArrayList<File>();
+        if (tab.getFile() != null) {
+            includePaths.add(tab.getFile().getParentFile());
+        }
+
+        final StringReader reader = new StringReader(tab.getEditor().getText());
+
+        final String name = tab.getText();
+        final File file = tab.getFile();
+
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                IProgressMonitor monitor = statusLine.getProgressMonitor();
+                monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
+
+                try {
+                    Source source = compile(reader, name, file, includePaths);
+                    if (source == null) {
+                        return;
+                    }
+
+                    final StringBuilder sb = new IntelHexBuilder(source).build();
+                    display.syncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            Clipboard clipboard = new Clipboard(display);
+                            try {
+                                clipboard.setContents(new Object[] {
+                                    sb.toString()
+                                }, new Transfer[] {
+                                    TextTransfer.getInstance()
+                                });
+                            } finally {
+                                clipboard.dispose();
+                            }
+                        }
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                monitor.done();
+            }
+        }).start();
+
+    }
+
+    private void handleCompileAndCopyBinaryToClipboard() throws Exception {
+        CTabItem tabItem = tabFolder.getSelection();
+        if (tabItem == null) {
+            return;
+        }
+        SourceEditorTab tab = (SourceEditorTab) tabItem.getData();
+
+        console.clear();
+
+        final List<File> includePaths = new ArrayList<File>();
+        if (tab.getFile() != null) {
+            includePaths.add(tab.getFile().getParentFile());
+        }
+
+        final StringReader reader = new StringReader(tab.getEditor().getText());
+
+        final String name = tab.getText();
+        final File file = tab.getFile();
+
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                IProgressMonitor monitor = statusLine.getProgressMonitor();
+                monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
+
+                try {
+                    String baseName = name;
+                    if (baseName.indexOf('.') != -1) {
+                        baseName = baseName.substring(0, baseName.lastIndexOf('.'));
+                    }
+
+                    Source source = compile(reader, name, file, includePaths);
+                    if (source == null) {
+                        return;
+                    }
+
+                    StringBuilder sb = new StringBuilder();
+
+                    String s = preferences.getDownloadCommand();
+                    s = s.replace("{0}", baseName + ".COM");
+                    sb.append(s);
+                    sb.append("\r");
+
+                    sb.append("U0\r");
+                    sb.append(":");
+
+                    int checksum = 0;
+                    byte[] data = source.generateObjectCode();
+                    for (int i = 0; i < data.length; i++) {
+                        sb.append(String.format("%02X", data[i] & 0xFF));
+                        checksum += data[i] & 0xFF;
+                    }
+
+                    sb.append(">");
+                    sb.append(String.format("%02X", data.length & 0xFF));
+                    sb.append(String.format("%02X", checksum & 0xFF));
+
+                    display.syncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            Clipboard clipboard = new Clipboard(display);
+                            try {
+                                clipboard.setContents(new Object[] {
+                                    sb.toString()
+                                }, new Transfer[] {
+                                    TextTransfer.getInstance()
+                                });
+                            } finally {
+                                clipboard.dispose();
+                            }
+                        }
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                monitor.done();
+            }
+
+        }).start();
+
     }
 
     static {
