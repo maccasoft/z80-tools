@@ -96,12 +96,16 @@ public class ListingBuilder {
                     if (line.getInstructionObject() != null) {
                         nl.grauw.glass.instructions.If ins = (nl.grauw.glass.instructions.If) line.getInstruction();
                         build(ins.getThenSource());
-                        build(ins.getElseSource());
+                        if (ins.getElseSource() != null) {
+                            build(ins.getElseSource());
+                        }
                     }
                     else {
                         If ins = (If) line.getDirective();
                         build(ins.getThenSource());
-                        build(ins.getElseSource());
+                        if (ins.getElseSource() != null) {
+                            build(ins.getElseSource());
+                        }
                     }
                 }
             } catch (AssemblyException e) {
