@@ -133,7 +133,17 @@ public class Application {
     MemIoOps memIoOps;
     int entryAddress;
 
-    Map<Integer, Line> list;
+    class LineEntry {
+        int lineNumber;
+        Line line;
+
+        LineEntry(int lineNumber, Line line) {
+            this.lineNumber = lineNumber;
+            this.line = line;
+        }
+    }
+
+    Map<Integer, LineEntry> list;
 
     int stepOverPC1;
     int stepOverPC2;
@@ -2385,10 +2395,11 @@ public class Application {
                     });
                     proc.setBreakpoint(0x0005, true);
 
-                    list = new HashMap<Integer, Line>();
+                    list = new HashMap<Integer, LineEntry>();
 
                     entryAddress = -1;
 
+                    int lineNumber = 0;
                     for (Line line : source.getLines()) {
                         int address = line.getScope().getAddress();
                         byte[] code = line.getBytes();
@@ -2396,7 +2407,7 @@ public class Application {
                             entryAddress = address;
                         }
                         System.arraycopy(code, 0, memIoOps.getRam(), address, code.length);
-                        list.put(address, line);
+                        list.put(address, new LineEntry(lineNumber++, line));
                     }
 
                     display.syncExec(new Runnable() {
@@ -2491,9 +2502,9 @@ public class Application {
         memory.clearUpdates();
         viewer.getControl().setFocus();
 
-        Line line = list.get(proc.getRegPC());
-        if (line != null) {
-            stepOverPC1 = proc.getRegPC() + line.getSize();
+        LineEntry lineEntry = list.get(proc.getRegPC());
+        if (lineEntry != null) {
+            stepOverPC1 = proc.getRegPC() + lineEntry.line.getSize();
             stepOverPC2 = memIoOps.peek16(proc.getRegSP());
             stepOverSP = proc.getRegSP();
             boolean repeat = isRepeatInstruction();
@@ -2536,9 +2547,9 @@ public class Application {
         memory.clearUpdates();
         viewer.getControl().setFocus();
 
-        Line line = list.get(proc.getRegPC());
-        if (line != null) {
-            stepOverPC1 = proc.getRegPC() + line.getSize();
+        LineEntry lineEntry = list.get(proc.getRegPC());
+        if (lineEntry != null) {
+            stepOverPC1 = proc.getRegPC() + lineEntry.line.getSize();
             stepOverPC2 = memIoOps.peek16(proc.getRegSP());
             stepOverSP = proc.getRegSP();
             display.asyncExec(stepOverRunnable);
@@ -2575,9 +2586,9 @@ public class Application {
         memory.update();
         registers.updateRegisters(proc);
 
-        Line line = list.get(proc.getRegPC());
-        if (line != null) {
-            viewer.gotToLineColumn(line.getLineNumber(), 0);
+        LineEntry lineEntry = list.get(proc.getRegPC());
+        if (lineEntry != null) {
+            viewer.gotToLineColumn(lineEntry.lineNumber, 0);
         }
     }
 
