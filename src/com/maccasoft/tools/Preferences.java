@@ -75,6 +75,8 @@ public class Preferences {
     boolean useTabstops;
     int tabWidth;
 
+    String[] includes;
+
     boolean generateBinary;
     boolean generateHex;
     boolean generateListing;
@@ -240,6 +242,14 @@ public class Preferences {
 
     public void setTabWidth(int tabWidth) {
         changeSupport.firePropertyChange(PROP_TABWIDTH, this.tabWidth, this.tabWidth = tabWidth);
+    }
+
+    public String[] getIncludes() {
+        return includes;
+    }
+
+    public void setIncludes(String[] includes) {
+        this.includes = includes;
     }
 
     public boolean isGenerateBinary() {

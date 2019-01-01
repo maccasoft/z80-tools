@@ -60,6 +60,11 @@ public class PreferencesDialog extends Dialog {
     Combo labelCase;
     Combo mnemonicCase;
 
+    List includes;
+    Button includesAdd;
+    Button includesRemove;
+    Button includesMoveUp;
+    Button includesMoveDown;
     Button generateBinary;
     Button generateHex;
     Button generateListing;
@@ -294,10 +299,116 @@ public class PreferencesDialog extends Dialog {
 
         pages.add("Assembler");
 
-        Label label = new Label(composite, SWT.NONE);
+        Composite group = new Composite(composite, SWT.NONE);
+        layout = new GridLayout(2, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        group.setLayout(layout);
+        group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+
+        Label label = new Label(group, SWT.NONE);
+        label.setText("Include paths");
+        label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+
+        includes = new List(group, SWT.SINGLE | SWT.BORDER);
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gridData.widthHint = convertWidthInCharsToPixels(60);
+        gridData.heightHint = includes.getItemHeight() * 5 + includes.getBorderWidth() * 2;
+        includes.setLayoutData(gridData);
+        includes.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                updateIncludesButtons();
+            }
+        });
+
+        Composite container = new Composite(group, SWT.NONE);
+        layout = new GridLayout(1, true);
+        layout.marginWidth = layout.marginHeight = 0;
+        container.setLayout(layout);
+
+        includesAdd = new Button(container, SWT.PUSH);
+        includesAdd.setImage(ImageRegistry.getImageFromResources("add.png"));
+        includesAdd.setToolTipText("Add");
+        includesAdd.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                DirectoryDialog dlg = new DirectoryDialog(getShell());
+                String s = dlg.open();
+                if (s != null) {
+                    includes.add(s);
+                    updateIncludesButtons();
+                }
+            }
+
+        });
+
+        includesRemove = new Button(container, SWT.PUSH);
+        includesRemove.setImage(ImageRegistry.getImageFromResources("delete.png"));
+        includesRemove.setToolTipText("Remove");
+        includesRemove.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                includes.remove(includes.getSelectionIndex());
+                updateIncludesButtons();
+            }
+
+        });
+        includesRemove.setEnabled(false);
+
+        includesMoveUp = new Button(container, SWT.PUSH);
+        includesMoveUp.setImage(ImageRegistry.getImageFromResources("arrow_up.png"));
+        includesMoveUp.setToolTipText("Up");
+        includesMoveUp.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                int index = includes.getSelectionIndex();
+                ArrayList<String> items = new ArrayList<String>(Arrays.asList(includes.getItems()));
+                String s = items.get(index);
+                items.remove(index);
+                items.add(index - 1, s);
+                includes.setItems(items.toArray(new String[items.size()]));
+                includes.setSelection(index - 1);
+                includes.setFocus();
+                updateIncludesButtons();
+            }
+
+        });
+        includesMoveUp.setEnabled(false);
+
+        includesMoveDown = new Button(container, SWT.PUSH);
+        includesMoveDown.setImage(ImageRegistry.getImageFromResources("arrow_down.png"));
+        includesMoveDown.setToolTipText("Down");
+        includesMoveDown.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                int index = includes.getSelectionIndex();
+                ArrayList<String> items = new ArrayList<String>(Arrays.asList(includes.getItems()));
+                String s = items.get(index);
+                items.add(index + 2, s);
+                items.remove(index);
+                includes.setItems(items.toArray(new String[items.size()]));
+                includes.setSelection(index + 1);
+                includes.setFocus();
+                updateIncludesButtons();
+            }
+
+        });
+        includesMoveDown.setEnabled(false);
+
+        String[] items = preferences.getIncludes();
+        if (items != null) {
+            includes.setItems(items);
+        }
+
+        label = new Label(composite, SWT.NONE);
         label.setText("Output");
 
-        Composite group = new Composite(composite, SWT.NONE);
+        group = new Composite(composite, SWT.NONE);
         layout = new GridLayout(3, false);
         layout.marginWidth = layout.marginHeight = 0;
         group.setLayout(layout);
@@ -314,6 +425,13 @@ public class PreferencesDialog extends Dialog {
         generateListing = new Button(group, SWT.CHECK);
         generateListing.setText("Listing");
         generateListing.setSelection(preferences.isGenerateListing());
+    }
+
+    void updateIncludesButtons() {
+        int index = includes.getSelectionIndex();
+        includesRemove.setEnabled(index != -1);
+        includesMoveUp.setEnabled(index != -1 && index > 0);
+        includesMoveDown.setEnabled(index != -1 && index < (includes.getItemCount() - 1));
     }
 
     void createEditorPage(Composite parent) {
@@ -449,6 +567,7 @@ public class PreferencesDialog extends Dialog {
         preferences.setLabelCase(labelCase.getSelectionIndex());
         preferences.setMnemonicCase(mnemonicCase.getSelectionIndex());
 
+        preferences.setIncludes(includes.getItems());
         preferences.setGenerateBinary(generateBinary.getSelection());
         preferences.setGenerateHex(generateHex.getSelection());
         preferences.setGenerateListing(generateListing.getSelection());

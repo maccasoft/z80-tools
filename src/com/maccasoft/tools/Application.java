@@ -1854,11 +1854,6 @@ public class Application {
 
         console.clear();
 
-        final List<File> includePaths = new ArrayList<File>();
-        if (tab.getFile() != null) {
-            includePaths.add(tab.getFile().getParentFile());
-        }
-
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
         final String name = tab.getText();
@@ -1871,20 +1866,32 @@ public class Application {
                 IProgressMonitor monitor = statusLine.getProgressMonitor();
                 monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
 
-                compile(reader, name, file, includePaths);
+                compile(reader, name, file);
 
                 monitor.done();
             }
         }).start();
     }
 
-    Source compile(Reader reader, String name, File file, List<File> includePaths) {
+    Source compile(Reader reader, String name, File file) {
         PrintStream out = new PrintStream(console.getOutputStream());
         PrintStream err = new PrintStream(console.getErrorStream());
 
         out.print("Compiling " + name + "...");
 
         try {
+            final List<File> includePaths = new ArrayList<File>();
+            if (file != null) {
+                includePaths.add(file.getParentFile());
+            }
+
+            String[] includes = preferences.getIncludes();
+            if (includes != null) {
+                for (int i = 0; i < includes.length; i++) {
+                    includePaths.add(new File(includes[i]));
+                }
+            }
+
             SourceBuilder builder = new SourceBuilder(includePaths) {
 
                 @Override
@@ -2015,11 +2022,6 @@ public class Application {
 
         console.clear();
 
-        final List<File> includePaths = new ArrayList<File>();
-        if (tab.getFile() != null) {
-            includePaths.add(tab.getFile().getParentFile());
-        }
-
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
         final String name = tab.getText();
@@ -2035,7 +2037,7 @@ public class Application {
                 monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
 
                 try {
-                    Source source = compile(reader, name, file, includePaths);
+                    Source source = compile(reader, name, file);
                     if (source == null) {
                         return;
                     }
@@ -2106,11 +2108,6 @@ public class Application {
 
         console.clear();
 
-        final List<File> includePaths = new ArrayList<File>();
-        if (tab.getFile() != null) {
-            includePaths.add(tab.getFile().getParentFile());
-        }
-
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
         final String name = tab.getText();
@@ -2135,7 +2132,7 @@ public class Application {
                         baseName = baseName.substring(0, baseName.lastIndexOf('.'));
                     }
 
-                    Source source = compile(reader, name, file, includePaths);
+                    Source source = compile(reader, name, file);
                     if (source == null) {
                         return;
                     }
@@ -2177,11 +2174,6 @@ public class Application {
 
         console.clear();
 
-        final List<File> includePaths = new ArrayList<File>();
-        if (tab.getFile() != null) {
-            includePaths.add(tab.getFile().getParentFile());
-        }
-
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
         final String name = tab.getText();
@@ -2206,7 +2198,7 @@ public class Application {
                         baseName = baseName.substring(0, baseName.lastIndexOf('.'));
                     }
 
-                    Source source = compile(reader, name, file, includePaths);
+                    Source source = compile(reader, name, file);
                     if (source == null) {
                         return;
                     }
@@ -2248,11 +2240,6 @@ public class Application {
 
         console.clear();
 
-        final List<File> includePaths = new ArrayList<File>();
-        if (tab.getFile() != null) {
-            includePaths.add(tab.getFile().getParentFile());
-        }
-
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
         final String name = tab.getText();
@@ -2271,7 +2258,7 @@ public class Application {
                 monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
 
                 try {
-                    Source source = compile(reader, name, file, includePaths);
+                    Source source = compile(reader, name, file);
                     if (source == null) {
                         return;
                     }
@@ -2616,11 +2603,6 @@ public class Application {
 
         console.clear();
 
-        final List<File> includePaths = new ArrayList<File>();
-        if (tab.getFile() != null) {
-            includePaths.add(tab.getFile().getParentFile());
-        }
-
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
         final String name = tab.getText();
@@ -2634,7 +2616,7 @@ public class Application {
                 monitor.beginTask("Compile", IProgressMonitor.UNKNOWN);
 
                 try {
-                    Source source = compile(reader, name, file, includePaths);
+                    Source source = compile(reader, name, file);
                     if (source == null) {
                         return;
                     }
@@ -2676,11 +2658,6 @@ public class Application {
 
         console.clear();
 
-        final List<File> includePaths = new ArrayList<File>();
-        if (tab.getFile() != null) {
-            includePaths.add(tab.getFile().getParentFile());
-        }
-
         final StringReader reader = new StringReader(tab.getEditor().getText());
 
         final String name = tab.getText();
@@ -2699,7 +2676,7 @@ public class Application {
                         baseName = baseName.substring(0, baseName.lastIndexOf('.'));
                     }
 
-                    Source source = compile(reader, name, file, includePaths);
+                    Source source = compile(reader, name, file);
                     if (source == null) {
                         return;
                     }
