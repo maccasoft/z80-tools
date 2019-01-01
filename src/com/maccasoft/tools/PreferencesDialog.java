@@ -16,6 +16,7 @@ import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.resource.StringConverter;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.FontData;
@@ -35,6 +36,10 @@ import org.eclipse.swt.widgets.Text;
 import com.maccasoft.tools.internal.ImageRegistry;
 
 public class PreferencesDialog extends Dialog {
+
+    List pages;
+    Composite stack;
+    StackLayout stackLayout;
 
     List roots;
     Button rootAdd;
@@ -85,7 +90,6 @@ public class PreferencesDialog extends Dialog {
         layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
         composite.setLayout(layout);
         composite.setLayoutData(new GridData(GridData.FILL_BOTH));
-        applyDialogFont(composite);
 
         if ("win32".equals(SWT.getPlatform())) {
             defaultFont = StringConverter.asString(new FontData("Courier New", 9, SWT.NONE));
@@ -94,94 +98,56 @@ public class PreferencesDialog extends Dialog {
             defaultFont = StringConverter.asString(new FontData("mono", 9, SWT.NONE));
         }
 
-        Control control = createRootDirectoryGroup(composite);
-        control.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+        pages = new List(composite, SWT.SIMPLE | SWT.BORDER);
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, false, true);
+        gridData.widthHint = convertWidthInCharsToPixels(20);
+        pages.setLayoutData(gridData);
 
-        addSeparator(composite);
+        stack = new Composite(composite, SWT.NONE);
+        stackLayout = new StackLayout();
+        stackLayout.marginHeight = stackLayout.marginWidth = 0;
+        stack.setLayout(stackLayout);
+        stack.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        Label label = new Label(composite, SWT.NONE);
-        label.setText("Editor font:");
+        createGeneralPage(stack);
+        createAssemblerPage(stack);
+        createEditorPage(stack);
+        createFormatterPage(stack);
 
-        Composite container = new Composite(composite, SWT.NONE);
-        layout = new GridLayout(2, false);
-        layout.marginWidth = layout.marginHeight = 0;
-        container.setLayout(layout);
-        container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        editorFont = new Text(container, SWT.BORDER);
-        editorFont.setLayoutData(new GridData(convertWidthInCharsToPixels(35), SWT.DEFAULT));
-        editorFontBrowse = new Button(container, SWT.PUSH);
-        editorFontBrowse.setText("Select");
-        editorFontBrowse.addSelectionListener(new SelectionAdapter() {
+        stackLayout.topControl = stack.getChildren()[0];
+
+        applyDialogFont(composite);
+
+        pages.select(0);
+        pages.addSelectionListener(new SelectionAdapter() {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                FontDialog dlg = new FontDialog(getShell());
-                dlg.setText("Editor font");
-                dlg.setFontList(new FontData[] {
-                    StringConverter.asFontData(editorFont.getText())
-                });
-                FontData result = dlg.open();
-                if (result != null) {
-                    editorFont.setText(StringConverter.asString(result));
-                }
+                int index = pages.getSelectionIndex();
+                stackLayout.topControl = stack.getChildren()[index];
+                stack.layout();
             }
         });
-        String s = preferences.getEditorFont();
-        editorFont.setText((s != null && !"".equals(s)) ? s : defaultFont);
-
-        new Label(composite, SWT.NONE);
-
-        showLineNumbers = new Button(composite, SWT.CHECK);
-        showLineNumbers.setText("Show line numbers");
-        showLineNumbers.setSelection(preferences.isShowLineNumbers());
-
-        label = new Label(composite, SWT.NONE);
-        label.setText("Tab width");
-
-        tabWidth = new Text(composite, SWT.BORDER);
-        tabWidth.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
-        tabWidth.setText(String.valueOf(preferences.getTabWidth()));
-
-        new Label(composite, SWT.NONE);
-
-        useTabstops = new Button(composite, SWT.CHECK);
-        useTabstops.setText("Use formatter tabstops");
-        useTabstops.setSelection(preferences.isUseTabstops());
-
-        new Label(composite, SWT.NONE);
-
-        reloadOpenTabs = new Button(composite, SWT.CHECK);
-        reloadOpenTabs.setText("Reload open tabs");
-        reloadOpenTabs.setSelection(preferences.isReloadOpenTabs());
-
-        addSeparator(composite);
-
-        createFormatterGroup(composite);
-
-        addSeparator(composite);
-
-        createCompilerGroup(composite);
-
-        label = new Label(composite, SWT.NONE);
-        label.setText("Download cmd.");
-        downloadCommand = new Text(composite, SWT.BORDER);
-        downloadCommand.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        downloadCommand.setText(preferences.getDownloadCommand());
-
-        label = new Label(composite, SWT.NONE);
-        label.setText("XModem cmd.");
-        xmodemCommand = new Text(composite, SWT.BORDER);
-        xmodemCommand.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        xmodemCommand.setText(preferences.getXmodemCommand());
 
         return composite;
     }
 
-    Control createRootDirectoryGroup(Composite parent) {
-        Composite group = new Composite(parent, SWT.NONE);
+    void createGeneralPage(Composite parent) {
+        Composite composite = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(2, false);
+        layout.marginHeight = layout.marginWidth = 0;
+        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
+        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
+        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+
+        pages.add("General");
+
+        Composite group = new Composite(composite, SWT.NONE);
+        layout = new GridLayout(2, false);
         layout.marginWidth = layout.marginHeight = 0;
         group.setLayout(layout);
+        group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
 
         Label label = new Label(group, SWT.NONE);
         label.setText("File browser root paths");
@@ -283,7 +249,31 @@ public class PreferencesDialog extends Dialog {
             roots.setItems(items);
         }
 
-        return group;
+        addSeparator(composite);
+
+        new Label(composite, SWT.NONE);
+
+        reloadOpenTabs = new Button(composite, SWT.CHECK);
+        reloadOpenTabs.setText("Reload open tabs");
+        reloadOpenTabs.setSelection(preferences.isReloadOpenTabs());
+
+        addSeparator(composite);
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Download cmd.");
+        downloadCommand = new Text(composite, SWT.BORDER);
+        downloadCommand.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        downloadCommand.setText(preferences.getDownloadCommand());
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("XModem cmd.");
+        xmodemCommand = new Text(composite, SWT.BORDER);
+        xmodemCommand.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        xmodemCommand.setText(preferences.getXmodemCommand());
+
+        label = new Label(composite, SWT.NONE);
+        label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, 2, 1));
+        ((GridData) label.getLayoutData()).heightHint = convertHeightInCharsToPixels(7);
     }
 
     void updateRootDirectoryButtons() {
@@ -293,52 +283,22 @@ public class PreferencesDialog extends Dialog {
         rootMoveDown.setEnabled(index != -1 && index < (roots.getItemCount() - 1));
     }
 
-    void createFormatterGroup(Composite parent) {
-        Label label = new Label(parent, SWT.NONE);
-        label.setText("Mnemonic column");
-        mnemonicColumn = new Text(parent, SWT.BORDER);
-        mnemonicColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
-        mnemonicColumn.setText(String.valueOf(preferences.getMnemonicColumn()));
+    void createAssemblerPage(Composite parent) {
+        Composite composite = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginHeight = layout.marginWidth = 0;
+        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
+        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
+        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
 
-        label = new Label(parent, SWT.NONE);
-        label.setText("Arguments column");
-        argumentColumn = new Text(parent, SWT.BORDER);
-        argumentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
-        argumentColumn.setText(String.valueOf(preferences.getArgumentColumn()));
+        pages.add("Assembler");
 
-        label = new Label(parent, SWT.NONE);
-        label.setText("Comment column");
-        commentColumn = new Text(parent, SWT.BORDER);
-        commentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
-        commentColumn.setText(String.valueOf(preferences.getCommentColumn()));
+        Label label = new Label(composite, SWT.NONE);
+        label.setText("Output");
 
-        label = new Label(parent, SWT.NONE);
-        label.setText("Label case");
-        labelCase = new Combo(parent, SWT.DROP_DOWN | SWT.READ_ONLY);
-        labelCase.setItems(new String[] {
-            "No change",
-            "Upper",
-            "Lower",
-        });
-        labelCase.select(preferences.getLabelCase());
-
-        label = new Label(parent, SWT.NONE);
-        label.setText("Mnemonic case");
-        mnemonicCase = new Combo(parent, SWT.DROP_DOWN | SWT.READ_ONLY);
-        mnemonicCase.setItems(new String[] {
-            "No change",
-            "Upper",
-            "Lower",
-        });
-        mnemonicCase.select(preferences.getMnemonicCase());
-    }
-
-    void createCompilerGroup(Composite parent) {
-        Label label = new Label(parent, SWT.NONE);
-        label.setText("Compiler output");
-
-        Composite group = new Composite(parent, SWT.NONE);
-        GridLayout layout = new GridLayout(3, false);
+        Composite group = new Composite(composite, SWT.NONE);
+        layout = new GridLayout(3, false);
         layout.marginWidth = layout.marginHeight = 0;
         group.setLayout(layout);
         group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -354,6 +314,117 @@ public class PreferencesDialog extends Dialog {
         generateListing = new Button(group, SWT.CHECK);
         generateListing.setText("Listing");
         generateListing.setSelection(preferences.isGenerateListing());
+    }
+
+    void createEditorPage(Composite parent) {
+        Composite composite = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginHeight = layout.marginWidth = 0;
+        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
+        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
+        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+
+        pages.add("Editor");
+
+        Label label = new Label(composite, SWT.NONE);
+        label.setText("Font");
+
+        Composite container = new Composite(composite, SWT.NONE);
+        layout = new GridLayout(2, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        editorFont = new Text(container, SWT.BORDER);
+        editorFont.setLayoutData(new GridData(convertWidthInCharsToPixels(35), SWT.DEFAULT));
+        editorFontBrowse = new Button(container, SWT.PUSH);
+        editorFontBrowse.setText("Select");
+        editorFontBrowse.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                FontDialog dlg = new FontDialog(getShell());
+                dlg.setText("Editor font");
+                dlg.setFontList(new FontData[] {
+                    StringConverter.asFontData(editorFont.getText())
+                });
+                FontData result = dlg.open();
+                if (result != null) {
+                    editorFont.setText(StringConverter.asString(result));
+                }
+            }
+        });
+        String s = preferences.getEditorFont();
+        editorFont.setText((s != null && !"".equals(s)) ? s : defaultFont);
+
+        new Label(composite, SWT.NONE);
+
+        showLineNumbers = new Button(composite, SWT.CHECK);
+        showLineNumbers.setText("Show line numbers");
+        showLineNumbers.setSelection(preferences.isShowLineNumbers());
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Tab width");
+
+        tabWidth = new Text(composite, SWT.BORDER);
+        tabWidth.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
+        tabWidth.setText(String.valueOf(preferences.getTabWidth()));
+
+        new Label(composite, SWT.NONE);
+
+        useTabstops = new Button(composite, SWT.CHECK);
+        useTabstops.setText("Use formatter tabstops");
+        useTabstops.setSelection(preferences.isUseTabstops());
+    }
+
+    void createFormatterPage(Composite parent) {
+        Composite composite = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginHeight = layout.marginWidth = 0;
+        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
+        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
+        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+
+        pages.add("Formatter");
+
+        Label label = new Label(composite, SWT.NONE);
+        label.setText("Mnemonic column");
+        mnemonicColumn = new Text(composite, SWT.BORDER);
+        mnemonicColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
+        mnemonicColumn.setText(String.valueOf(preferences.getMnemonicColumn()));
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Arguments column");
+        argumentColumn = new Text(composite, SWT.BORDER);
+        argumentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
+        argumentColumn.setText(String.valueOf(preferences.getArgumentColumn()));
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Comment column");
+        commentColumn = new Text(composite, SWT.BORDER);
+        commentColumn.setLayoutData(new GridData(convertWidthInCharsToPixels(4), SWT.DEFAULT));
+        commentColumn.setText(String.valueOf(preferences.getCommentColumn()));
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Label case");
+        labelCase = new Combo(composite, SWT.DROP_DOWN | SWT.READ_ONLY);
+        labelCase.setItems(new String[] {
+            "No change",
+            "Upper",
+            "Lower",
+        });
+        labelCase.select(preferences.getLabelCase());
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Mnemonic case");
+        mnemonicCase = new Combo(composite, SWT.DROP_DOWN | SWT.READ_ONLY);
+        mnemonicCase.setItems(new String[] {
+            "No change",
+            "Upper",
+            "Lower",
+        });
+        mnemonicCase.select(preferences.getMnemonicCase());
     }
 
     void addSeparator(Composite parent) {
