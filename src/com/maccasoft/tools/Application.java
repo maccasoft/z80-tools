@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Marco Maccaferri and others.
+ * Copyright (c) 2018-19 Marco Maccaferri and others.
  * All rights reserved.
  *
  * This program and the accompanying materials are made available under
@@ -1958,7 +1958,7 @@ public class Application {
 
                 if (preferences.isGenerateBinary()) {
                     OutputStream output = new FileOutputStream(new File(file.getParentFile(), baseName + ".BIN"));
-                    source.generateObjectCode(output);
+                    output.write(new BinaryBuilder(source).build());
                     output.close();
                 }
 
@@ -2161,7 +2161,7 @@ public class Application {
                     });
 
                     serialPort = terminal.getSerialPort();
-                    byte[] data = source.generateObjectCode();
+                    byte[] data = new BinaryBuilder(source).build();
 
                     monitor.beginTask("Upload", (data.length + 127) / 128);
                     out.println("Sending to serial port " + serialPort.getPortName() + " ...");
@@ -2227,7 +2227,7 @@ public class Application {
                     });
 
                     serialPort = terminal.getSerialPort();
-                    byte[] data = source.generateObjectCode();
+                    byte[] data = new BinaryBuilder(source).build();
 
                     monitor.beginTask("Upload", (data.length + 127) / 128);
                     out.println("Sending to serial port " + serialPort.getPortName() + " ...");
@@ -2707,7 +2707,7 @@ public class Application {
                     sb.append(":");
 
                     int checksum = 0;
-                    byte[] data = source.generateObjectCode();
+                    byte[] data = new BinaryBuilder(source).build();
                     for (int i = 0; i < data.length; i++) {
                         sb.append(String.format("%02X", data[i] & 0xFF));
                         checksum += data[i] & 0xFF;
