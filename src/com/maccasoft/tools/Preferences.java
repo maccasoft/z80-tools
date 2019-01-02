@@ -64,6 +64,7 @@ public class Preferences {
     String editorFont;
     boolean showLineNumbers;
     boolean reloadOpenTabs;
+    int lineDelimiters;
     String[] openTabs;
     String selectedTab;
 
@@ -72,6 +73,7 @@ public class Preferences {
     int commentColumn;
     int labelCase;
     int mnemonicCase;
+    int directivePrefix;
     boolean useTabstops;
     int tabWidth;
 
@@ -95,6 +97,7 @@ public class Preferences {
     Preferences() {
         showLineNumbers = true;
         reloadOpenTabs = true;
+        lineDelimiters = 1;
 
         tabWidth = 4;
         mnemonicColumn = 16;
@@ -172,6 +175,14 @@ public class Preferences {
         this.reloadOpenTabs = reloadOpenTabs;
     }
 
+    public int getLineDelimiters() {
+        return lineDelimiters;
+    }
+
+    public void setLineDelimiters(int lineDelimiters) {
+        this.lineDelimiters = lineDelimiters;
+    }
+
     public String[] getOpenTabs() {
         return openTabs;
     }
@@ -226,6 +237,14 @@ public class Preferences {
 
     public void setMnemonicCase(int mnemonicCase) {
         this.mnemonicCase = mnemonicCase;
+    }
+
+    public int getDirectivePrefix() {
+        return directivePrefix;
+    }
+
+    public void setDirectivePrefix(int directivePrefix) {
+        this.directivePrefix = directivePrefix;
     }
 
     public boolean isUseTabstops() {

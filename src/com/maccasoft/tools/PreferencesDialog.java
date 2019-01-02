@@ -46,6 +46,7 @@ public class PreferencesDialog extends Dialog {
     Button rootRemove;
     Button rootMoveUp;
     Button rootMoveDown;
+    Combo lineDelimiters;
 
     Text editorFont;
     Button editorFontBrowse;
@@ -59,6 +60,7 @@ public class PreferencesDialog extends Dialog {
     Text commentColumn;
     Combo labelCase;
     Combo mnemonicCase;
+    Combo directivePrefix;
 
     List includes;
     Button includesAdd;
@@ -261,6 +263,16 @@ public class PreferencesDialog extends Dialog {
         reloadOpenTabs = new Button(composite, SWT.CHECK);
         reloadOpenTabs.setText("Reload open tabs");
         reloadOpenTabs.setSelection(preferences.isReloadOpenTabs());
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Line delimiters");
+        lineDelimiters = new Combo(composite, SWT.DROP_DOWN | SWT.READ_ONLY);
+        lineDelimiters.setItems(new String[] {
+            "Platform",
+            "Windows (CR/LF)",
+            "Linux (LF)",
+        });
+        lineDelimiters.select(preferences.getLineDelimiters());
 
         addSeparator(composite);
 
@@ -543,6 +555,16 @@ public class PreferencesDialog extends Dialog {
             "Lower",
         });
         mnemonicCase.select(preferences.getMnemonicCase());
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("Directive prefix");
+        directivePrefix = new Combo(composite, SWT.DROP_DOWN | SWT.READ_ONLY);
+        directivePrefix.setItems(new String[] {
+            "No change",
+            "Add dot",
+            "Remove dot",
+        });
+        directivePrefix.select(preferences.getDirectivePrefix());
     }
 
     void addSeparator(Composite parent) {
@@ -560,12 +582,14 @@ public class PreferencesDialog extends Dialog {
         preferences.setTabWidth(Integer.valueOf(tabWidth.getText()));
         preferences.setUseTabstops(useTabstops.getSelection());
         preferences.setReloadOpenTabs(reloadOpenTabs.getSelection());
+        preferences.setLineDelimiters(lineDelimiters.getSelectionIndex());
 
         preferences.setMnemonicColumn(Integer.valueOf(mnemonicColumn.getText()));
         preferences.setArgumentColumn(Integer.valueOf(argumentColumn.getText()));
         preferences.setCommentColumn(Integer.valueOf(commentColumn.getText()));
         preferences.setLabelCase(labelCase.getSelectionIndex());
         preferences.setMnemonicCase(mnemonicCase.getSelectionIndex());
+        preferences.setDirectivePrefix(directivePrefix.getSelectionIndex());
 
         preferences.setIncludes(includes.getItems());
         preferences.setGenerateBinary(generateBinary.getSelection());

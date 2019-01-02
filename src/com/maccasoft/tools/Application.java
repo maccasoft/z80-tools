@@ -865,6 +865,7 @@ public class Application {
                     formatter.setCommentColumn(preferences.getCommentColumn());
                     formatter.setLabelCase(preferences.getLabelCase());
                     formatter.setMnemonicCase(preferences.getMnemonicCase());
+                    formatter.setDirectivePrefix(preferences.getDirectivePrefix());
 
                     tab.getEditor().replaceText(formatter.format());
 
@@ -1622,10 +1623,11 @@ public class Application {
 
                 if (file.exists()) {
                     try {
+                        String lineDelimiter = System.getProperty("line.separator");
                         BufferedReader reader = new BufferedReader(new FileReader(file));
                         while ((line = reader.readLine()) != null) {
                             sb.append(line);
-                            sb.append("\n");
+                            sb.append(lineDelimiter);
                         }
                         reader.close();
                     } catch (Exception e) {
@@ -1778,8 +1780,21 @@ public class Application {
             file = new File(fileName);
         }
 
+        String text = tab.getEditor().getText();
+        switch (preferences.getLineDelimiters()) {
+            case 0:
+                text = text.replaceAll("(\r\n|\n|\r)", System.getProperty("line.separator"));
+                break;
+            case 1:
+                text = text.replaceAll("(\r\n|\n|\r)", "\r\n");
+                break;
+            case 2:
+                text = text.replaceAll("(\r\n|\n|\r)", "\n");
+                break;
+        }
+
         Writer os = new OutputStreamWriter(new FileOutputStream(file));
-        os.write(tab.getEditor().getText());
+        os.write(text);
         os.close();
 
         if (saveAs || tab.getFile() == null) {

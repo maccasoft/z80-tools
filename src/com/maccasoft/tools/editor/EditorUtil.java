@@ -45,4 +45,8 @@ public class EditorUtil {
 
         return text;
     }
+
+    public static String trimLines(String text) {
+        return text.replaceAll("[ \\t]+(\r\n|\n|\r)", "$1");
+    }
 }

@@ -581,7 +581,7 @@ public class SourceEditor {
         ignoreUndo = true;
         ignoreRedo = true;
 
-        text = text.replaceAll("[ \\t]+(\r\n|\n|\r)", "$1");
+        text = EditorUtil.trimLines(text);
         text = EditorUtil.replaceTabs(text, this.text.getTabs());
 
         currentLine = 0;
@@ -601,7 +601,9 @@ public class SourceEditor {
         int line = this.text.getLineAtOffset(offset);
         int topindex = line - this.text.getTopIndex();
 
+        text = EditorUtil.trimLines(text);
         text = EditorUtil.replaceTabs(text, this.text.getTabs());
+
         this.text.setText(text);
 
         if (line > this.text.getLineCount()) {
@@ -613,7 +615,7 @@ public class SourceEditor {
 
     public String getText() {
         String s = text.getText();
-        String s2 = s.replaceAll("[ \\t]+(\r\n|\n|\r)", "$1");
+        String s2 = EditorUtil.trimLines(s);
         if (!s2.equals(s)) {
             int offset = text.getCaretOffset();
             int line = text.getLineAtOffset(offset);

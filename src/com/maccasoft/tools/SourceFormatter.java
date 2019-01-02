@@ -10,6 +10,9 @@
 
 package com.maccasoft.tools;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import nl.grauw.glass.AssemblyException;
 import nl.grauw.glass.Line;
 import nl.grauw.glass.Source;
@@ -33,6 +36,8 @@ public class SourceFormatter {
     public static final int NO_CHANGE = 0;
     public static final int TO_UPPER = 1;
     public static final int TO_LOWER = 2;
+    public static final int ADD_DOT = 1;
+    public static final int REMOVE_DOT = 2;
 
     Source source;
 
@@ -42,12 +47,43 @@ public class SourceFormatter {
 
     int labelCase;
     int mnemonicCase;
+    int directivePrefix;
 
     int column;
     StringBuilder sb;
 
+    Set<String> directives;
+
     public SourceFormatter(Source source) {
         this.source = source;
+
+        this.directives = new HashSet<String>();
+        this.directives.add("byte");
+        this.directives.add("db");
+        this.directives.add("dd");
+        this.directives.add("ds");
+        this.directives.add("dw");
+        this.directives.add("else");
+        this.directives.add("end");
+        this.directives.add("endif");
+        this.directives.add("endm");
+        this.directives.add("endp");
+        this.directives.add("ends");
+        this.directives.add("equ");
+        this.directives.add("error");
+        this.directives.add("fill");
+        this.directives.add("if");
+        this.directives.add("incbin");
+        this.directives.add("include");
+        this.directives.add("irp");
+        this.directives.add("macro");
+        this.directives.add("org");
+        this.directives.add("proc");
+        this.directives.add("rept");
+        this.directives.add("section");
+        this.directives.add("text");
+        this.directives.add("word");
+        this.directives.add("warning");
     }
 
     public int getMnemonicColumn() {
@@ -90,6 +126,14 @@ public class SourceFormatter {
         this.mnemonicCase = mnemonicCase;
     }
 
+    public int getDirectivePrefix() {
+        return directivePrefix;
+    }
+
+    public void setDirectivePrefix(int directivePrefix) {
+        this.directivePrefix = directivePrefix;
+    }
+
     public String format() {
         sb = new StringBuilder();
         format(source);
@@ -128,17 +172,29 @@ public class SourceFormatter {
                         sb.append(' ');
                     }
 
+                    String s = line.getMnemonic();
+                    if (isDirective(s)) {
+                        if (directivePrefix == ADD_DOT) {
+                            if (!s.startsWith(".")) {
+                                s = "." + s;
+                            }
+                        }
+                        else if (directivePrefix == REMOVE_DOT) {
+                            if (s.startsWith(".")) {
+                                s = s.substring(1);
+                            }
+                        }
+                    }
                     if (mnemonicCase == TO_UPPER) {
-                        sb.append(line.getMnemonic().toUpperCase());
+                        sb.append(s.toUpperCase());
                     }
                     else if (mnemonicCase == TO_LOWER) {
-                        sb.append(line.getMnemonic().toLowerCase());
+                        sb.append(s.toLowerCase());
                     }
                     else {
-                        sb.append(line.getMnemonic());
+                        sb.append(s);
                     }
-
-                    column += line.getMnemonic().length();
+                    column += s.length();
 
                     if (line.getArguments() != null) {
                         while (column < argumentColumn) {
@@ -148,7 +204,7 @@ public class SourceFormatter {
                         if (sb.length() > 0 && sb.charAt(sb.length() - 1) != ' ') {
                             sb.append(' ');
                         }
-                        String s = formatExpression(line.getArguments());
+                        s = formatExpression(line.getArguments());
                         sb.append(s);
                         column += s.length();
                     }
@@ -257,6 +313,13 @@ public class SourceFormatter {
             }
         }
         return e.toString();
+    }
+
+    boolean isDirective(String s) {
+        if (s.startsWith(".")) {
+            return directives.contains(s.substring(1).toLowerCase());
+        }
+        return directives.contains(s.toLowerCase());
     }
 
 }
