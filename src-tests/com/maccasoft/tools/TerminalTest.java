@@ -194,4 +194,16 @@ public class TerminalTest extends DatabindingTestCase {
         assertEquals(7 + 8, term.foreground);
         assertEquals(1, term.background);
     }
+
+    public void testToggleCursor() throws Exception {
+        term.cursor = Terminal.CURSOR_ON | Terminal.CURSOR_FLASH | Terminal.CURSOR_ULINE;
+
+        term.print("\033[?25l");
+
+        assertEquals(Terminal.CURSOR_FLASH | Terminal.CURSOR_ULINE, term.cursor);
+
+        term.print("\033[?25h");
+
+        assertEquals(Terminal.CURSOR_ON | Terminal.CURSOR_FLASH | Terminal.CURSOR_ULINE, term.cursor);
+    }
 }

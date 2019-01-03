@@ -198,7 +198,7 @@ public class Terminal {
                     else {
                         h = Math.min(font.getHeight(), bounds.height - cy);
                     }
-                    e.gc.setBackground(colors[15]);
+                    e.gc.setBackground(colors[foreground]);
                     e.gc.fillRectangle(cx, cy + font.getHeight() - h, w, h);
                 }
             }
@@ -417,6 +417,7 @@ public class Terminal {
             if (c == 0x1B) {
                 state = 1;
                 argc = -1;
+                args[0] = 0;
                 return;
             }
         }
@@ -425,6 +426,13 @@ public class Terminal {
             return;
         }
         if (state == 2) {
+            if (c == '?') {
+                state = state + 2;
+                return;
+            }
+            state++;
+        }
+        if (state == 3 || state == 4) {
             if (c >= '0' && c <= '9') {
                 if (argc == -1) {
                     argc++;
@@ -439,10 +447,9 @@ public class Terminal {
                 return;
             }
             argc++;
+        }
+        if (state == 3) {
             switch (c) {
-                case '?':
-                    state++;
-                    return;
                 case 'A':
                     cy -= (argc == 0 || args[0] == 0 ? 1 : args[0]) * font.getHeight();
                     if (cy < 0) {
@@ -589,21 +596,7 @@ public class Terminal {
             state = 0;
             return;
         }
-        if (state == 3) {
-            if (c >= '0' && c <= '9') {
-                if (argc == -1) {
-                    argc++;
-                    args[argc] = 0;
-                }
-                args[argc] = args[argc] * 10 + (c - '0');
-                return;
-            }
-            if (c == ';') {
-                argc++;
-                args[argc] = 0;
-                return;
-            }
-            argc++;
+        if (state == 4) {
             switch (c) {
                 case 'h':
                     if (argc >= 1) {
