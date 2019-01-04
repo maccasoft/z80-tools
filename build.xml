@@ -4,7 +4,7 @@
        <format property="timestamp" pattern="yyyyMMdd-HHmm"/>
     </tstamp>
     <property name="app" value="swtapp"/>
-    <property name="version" value="0.0.0"/>
+    <property name="version" value="1.0.0"/>
     <property name="folder" value="z80-tools"/>
     <property name="mac-folder" value="Z80 Tools"/>
     <property name="package" value="com.maccasoft.tools_${version}.v${timestamp}"/>

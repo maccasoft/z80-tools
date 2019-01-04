@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Marco Maccaferri and others.
+ * Copyright (c) 2018-19 Marco Maccaferri and others.
  * All rights reserved.
  *
  * This program and the accompanying materials are made available under
@@ -80,7 +80,7 @@ public class AboutDialog extends Dialog {
         final String epl = "http://www.eclipse.org/legal/epl-v10.html";
         final String famfamfam = "http://www.famfamfam.com/lab/icons/silk";
         final String fugue = "http://p.yusukekamiyamane.com";
-        final String message = title + "\r\n\r\n" + "Copyright \u00a9 2018 Marco Maccaferri and others.\r\nAll rights reserved.\r\n\r\n" + //
+        final String message = title + "\r\n\r\n" + "Copyright \u00a9 2019 Marco Maccaferri and others.\r\nAll rights reserved.\r\n\r\n" + //
             "This program and the accompanying materials are made available under the\r\n" + //
             "terms of the Eclipse Public License v1.0 which accompanies this distribution\r\n" + //
             "and is available at " + epl + "\r\n" + //
