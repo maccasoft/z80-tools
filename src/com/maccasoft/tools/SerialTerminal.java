@@ -147,6 +147,7 @@ public class SerialTerminal extends Window {
         GridLayout layout = new GridLayout(1, false);
         layout.marginWidth = layout.marginHeight = 0;
         container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         term = new Terminal(container) {
 
