@@ -355,7 +355,7 @@ public class Terminal {
         try {
             String s = (String) clipboard.getContents(TextTransfer.getInstance());
             if (s != null) {
-                final byte[] b = s.getBytes();
+                final byte[] b = s.replaceAll("(\r\n|\n|\r)", "\r").getBytes();
                 new Thread(new Runnable() {
 
                     @Override
