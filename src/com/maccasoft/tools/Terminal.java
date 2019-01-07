@@ -10,6 +10,8 @@
 
 package com.maccasoft.tools;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
 import org.eclipse.swt.dnd.TextTransfer;
@@ -36,7 +38,7 @@ import org.eclipse.swt.widgets.Display;
 
 public class Terminal {
 
-    public static final int BLINK_TIMER = 250;
+    public static final int FRAME_TIMER = 16;
 
     public static final int CURSOR_OFF = 0x00;
     public static final int CURSOR_ON = 0x04;
@@ -53,6 +55,7 @@ public class Terminal {
     Image image;
     PaletteData paletteData;
     Rectangle bounds;
+    AtomicBoolean needsUpdate;
 
     TerminalFont font;
     Color[] colors;
@@ -72,25 +75,27 @@ public class Terminal {
 
     boolean cursorState;
 
-    final Runnable blinkRunnable = new Runnable() {
+    final Runnable screenUpdateRunnable = new Runnable() {
+
+        int counter;
 
         @Override
         public void run() {
             if (canvas.isDisposed() || bounds == null) {
                 return;
             }
-
-            GC gc = new GC(canvas);
-            try {
+            counter++;
+            if (counter >= 15) {
                 if ((cursor & CURSOR_FLASH) != 0) {
                     cursorState = !cursorState;
                     canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
                 }
-            } finally {
-                gc.dispose();
+                counter = 0;
             }
-
-            display.timerExec(BLINK_TIMER, blinkRunnable);
+            if (needsUpdate.getAndSet(false)) {
+                canvas.redraw();
+            }
+            display.timerExec(FRAME_TIMER, this);
         }
     };
 
@@ -100,6 +105,7 @@ public class Terminal {
 
     public Terminal(Composite parent) {
         display = parent.getDisplay();
+        needsUpdate = new AtomicBoolean();
 
         canvas = new Canvas(parent, SWT.NONE);
         canvas.setBackground(display.getSystemColor(SWT.COLOR_BLACK));
@@ -141,7 +147,7 @@ public class Terminal {
 
             @Override
             public void widgetDisposed(DisposeEvent e) {
-                display.timerExec(-1, blinkRunnable);
+                display.timerExec(-1, screenUpdateRunnable);
                 font.dispose();
                 for (int i = 0; i < colors.length; i++) {
                     colors[i].dispose();
@@ -239,7 +245,7 @@ public class Terminal {
 
         cursorState = (cursor & CURSOR_ON) != 0 && (cursor & CURSOR_FLASH) == 0;
 
-        display.timerExec(BLINK_TIMER, blinkRunnable);
+        display.timerExec(FRAME_TIMER, screenUpdateRunnable);
     }
 
     public int getCursorKeys() {
@@ -404,6 +410,7 @@ public class Terminal {
         GC gc = new GC(image);
         try {
             write(gc, c);
+            needsUpdate.set(true);
         } finally {
             gc.dispose();
         }
@@ -412,7 +419,6 @@ public class Terminal {
     void write(GC gc, int c) {
         int p0;
 
-        canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
         if (state == 0) {
             if (c == 0x1B) {
                 state = 1;
@@ -495,7 +501,6 @@ public class Terminal {
                     else if (args[0] == 2) {
                         gc.fillRectangle(0, 0, bounds.width, bounds.height);
                     }
-                    canvas.redraw();
                     break;
                 }
                 case 'K': {
@@ -509,7 +514,6 @@ public class Terminal {
                     else if (args[0] == 2) {
                         gc.fillRectangle(0, 0, bounds.width, font.getHeight() - 1);
                     }
-                    canvas.redraw();
                     break;
                 }
                 case 'L': {
@@ -519,14 +523,12 @@ public class Terminal {
                     gc.setBackground(colors[background]);
                     gc.fillRectangle(0, cy, bounds.width, font.getHeight());
                     temp.dispose();
-                    canvas.redraw();
                     break;
                 }
                 case 'M': {
                     gc.copyArea(0, cy + font.getHeight(), bounds.width, bounds.height - cy - font.getHeight(), 0, cy);
                     gc.setBackground(colors[background]);
                     gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
-                    canvas.redraw();
                     break;
                 }
                 case 'm': {
@@ -650,14 +652,12 @@ public class Terminal {
                     gc.setBackground(colors[background]);
                     gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
                     cy -= font.getHeight();
-                    canvas.redraw();
                 }
                 break;
             case 0x0C:
                 cx = cy = 0;
                 gc.setBackground(colors[background]);
                 gc.fillRectangle(bounds);
-                canvas.redraw();
                 break;
             case 0x0D:
                 cx = 0;
@@ -671,12 +671,10 @@ public class Terminal {
                         gc.setBackground(colors[background]);
                         gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
                         cy -= font.getHeight();
-                        canvas.redraw();
                     }
                 }
 
                 font.print(gc, c, cx, cy);
-                canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
 
                 cx += font.getWidth();
                 break;
@@ -689,6 +687,7 @@ public class Terminal {
             for (int i = 0; i < s.length(); i++) {
                 write(gc, s.charAt(i));
             }
+            needsUpdate.set(true);
         } finally {
             gc.dispose();
         }
@@ -700,6 +699,7 @@ public class Terminal {
             for (int i = 0; i < b.length; i++) {
                 write(gc, b[i]);
             }
+            needsUpdate.set(true);
         } finally {
             gc.dispose();
         }

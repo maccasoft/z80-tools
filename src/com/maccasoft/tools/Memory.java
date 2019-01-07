@@ -70,17 +70,17 @@ public class Memory {
                 int x2 = x1 + BYTES_PER_ROW * (3 * fontMetrics.getAverageCharWidth());
 
                 e.gc.setForeground(normal);
-                e.gc.drawString(String.format("%04X", addr), marginWidth, y);
+                e.gc.drawString(String.format("%04X", addr), marginWidth, y, true);
 
                 for (int i = 0; i < BYTES_PER_ROW && addr < data.length; i++) {
                     e.gc.setForeground(dataUpdate[addr] != 0 ? highlight : normal);
 
-                    e.gc.drawString(String.format("%02X", data[addr] & 0xFF), x1, y);
+                    e.gc.drawString(String.format("%02X", data[addr] & 0xFF), x1, y, true);
                     if (data[addr] >= 0x20 && data[addr] <= 0x7F) {
-                        e.gc.drawString(String.format("%c", data[addr] & 0xFF), x2, y);
+                        e.gc.drawString(String.format("%c", data[addr] & 0xFF), x2, y, true);
                     }
                     else {
-                        e.gc.drawString(".", x2, y);
+                        e.gc.drawString(".", x2, y, true);
                     }
 
                     x1 += fontMetrics.getAverageCharWidth() * 3;

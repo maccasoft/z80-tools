@@ -140,12 +140,12 @@ public class CodeRuler {
                 }
                 if (lineNumber == currentLine) {
                     gc.setBackground(currentLineBackground);
-                    gc.fillRectangle(0, y, rect.width, text.getLineHeight());
+                    gc.fillRectangle(leftMargin, y, rect.width - leftMargin - rightMargin, text.getLineHeight());
                 }
                 else {
                     gc.setBackground(canvas.getBackground());
                 }
-                gc.drawString(sb.toString(), leftMargin, y);
+                gc.drawString(sb.toString(), leftMargin, y, true);
             }
 
             lineNumber++;

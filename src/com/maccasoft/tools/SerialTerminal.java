@@ -100,13 +100,7 @@ public class SerialTerminal extends Window {
                 try {
                     final byte[] rx = serialPort.readBytes();
                     if (rx != null) {
-                        display.syncExec(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                term.write(rx);
-                            }
-                        });
+                        term.write(rx);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -402,11 +396,11 @@ public class SerialTerminal extends Window {
 
         while (true) {
             byte[] b = serialPort.readBytes(1, 5000);
-            print(b[0]);
+            term.write(b[0]);
             if (b[0] == '\r') {
                 try {
                     b = serialPort.readBytes(1, 200);
-                    print(b[0]);
+                    term.write(b[0]);
                 } catch (SerialPortTimeoutException e) {
                     // Do nothing
                 }
@@ -420,21 +414,11 @@ public class SerialTerminal extends Window {
         return s;
     }
 
-    void print(byte b) {
-        display.syncExec(new Runnable() {
-
-            @Override
-            public void run() {
-                term.write(b);
-            }
-        });
-    }
-
     void waitDot() throws SerialPortException, SerialPortTimeoutException {
         while (true) {
             byte[] b = serialPort.readBytes(1, 5000);
             if (b != null) {
-                print(b[0]);
+                term.write(b[0]);
                 if (b[0] == '.') {
                     break;
                 }
@@ -464,7 +448,7 @@ public class SerialTerminal extends Window {
             s = "";
             while (true) {
                 byte[] b = serialPort.readBytes(1, 15000);
-                print(b[0]);
+                term.write(b[0]);
                 if (b[0] >= ' ') {
                     s = s + (char) b[0];
                     if (s.endsWith("Overwrite (Y/N)?")) {
