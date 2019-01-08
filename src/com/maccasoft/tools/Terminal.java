@@ -356,7 +356,7 @@ public class Terminal {
         }
     }
 
-    void pasteFromClipboard() {
+    public void pasteFromClipboard() {
         Clipboard clipboard = new Clipboard(display);
         try {
             String s = (String) clipboard.getContents(TextTransfer.getInstance());
