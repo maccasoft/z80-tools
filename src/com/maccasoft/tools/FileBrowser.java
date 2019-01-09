@@ -99,6 +99,9 @@ public class FileBrowser {
 
         @Override
         public int compare(Viewer viewer, Object e1, Object e2) {
+            if (isRootObject(e1) || isRootObject(e2)) {
+                return 0;
+            }
             if (((File) e1).isDirectory() && !((File) e2).isDirectory()) {
                 return -1;
             }
@@ -106,6 +109,15 @@ public class FileBrowser {
                 return 1;
             }
             return super.compare(viewer, e1, e2);
+        }
+
+        boolean isRootObject(Object o) {
+            for (int i = 0; i < roots.length; i++) {
+                if (o == roots[i]) {
+                    return true;
+                }
+            }
+            return false;
         }
 
     }
