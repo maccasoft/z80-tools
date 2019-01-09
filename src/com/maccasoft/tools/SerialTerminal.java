@@ -83,6 +83,7 @@ public class SerialTerminal {
 
     String port;
     int baud;
+    boolean flowControl;
     SerialPort serialPort;
 
     Preferences preferences;
@@ -230,9 +231,14 @@ public class SerialTerminal {
         };
         shell.setImages(images);
 
+        port = preferences.getSerialPort();
+        baud = preferences.getSerialBaud();
+        flowControl = preferences.isSerialFlowControl();
+
         Menu menu = new Menu(shell, SWT.BAR);
         createFileMenu(menu);
         createEditMenu(menu);
+        createOptionsMenu(menu);
         createHelpMenu(menu);
         shell.setMenuBar(menu);
 
@@ -348,6 +354,38 @@ public class SerialTerminal {
         });
     }
 
+    void createOptionsMenu(Menu parent) {
+        Menu menu = new Menu(parent.getParent(), SWT.DROP_DOWN);
+
+        MenuItem item = new MenuItem(parent, SWT.CASCADE);
+        item.setText("&Options");
+        item.setMenu(menu);
+
+        item = new MenuItem(menu, SWT.CHECK);
+        item.setText("Hardware flow control");
+        item.setSelection(flowControl);
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    flowControl = ((MenuItem) e.widget).getSelection();
+                    if (serialPort != null && serialPort.isOpened()) {
+                        if (flowControl) {
+                            serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_RTSCTS_IN | SerialPort.FLOWCONTROL_RTSCTS_OUT);
+                        }
+                        else {
+                            serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
+                        }
+                    }
+                    preferences.setSerialFlowControl(flowControl);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+    }
+
     void createHelpMenu(Menu parent) {
         Menu menu = new Menu(parent.getParent(), SWT.DROP_DOWN);
 
@@ -368,9 +406,6 @@ public class SerialTerminal {
     }
 
     protected Control createContents(Composite parent) {
-        port = preferences.getSerialPort();
-        baud = preferences.getSerialBaud();
-
         container = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, false);
         layout.marginWidth = layout.marginHeight = 0;
@@ -406,15 +441,9 @@ public class SerialTerminal {
             @Override
             public void widgetDisposed(DisposeEvent e) {
                 try {
-                    serialPort.removeEventListener();
-                } catch (Exception ex) {
-                    // Do nothing
-                }
-                try {
-                    if (serialPort.isOpened()) {
+                    if (serialPort != null && serialPort.isOpened()) {
                         serialPort.closePort();
                     }
-
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -500,15 +529,19 @@ public class SerialTerminal {
     }
 
     void updateSerialPortSettings() {
-        if (serialPort == null || !serialPort.getPortName().equals(port)) {
+        if (serialPort != null && !serialPort.getPortName().equals(port)) {
             try {
-                serialPort.removeEventListener();
                 if (serialPort.isOpened()) {
                     serialPort.closePort();
                 }
             } catch (Exception e) {
-
+                // Do nothing
+            } finally {
+                serialPort = null;
             }
+        }
+
+        if (serialPort == null) {
             try {
                 serialPort = new SerialPort(port);
                 serialPort.openPort();
@@ -526,6 +559,12 @@ public class SerialTerminal {
                 SerialPort.PARITY_NONE,
                 false,
                 false);
+            if (flowControl) {
+                serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_RTSCTS_IN | SerialPort.FLOWCONTROL_RTSCTS_OUT);
+            }
+            else {
+                serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -684,26 +723,32 @@ public class SerialTerminal {
             }
 
             serialPort.writeString("U0\r");
-            flushOutput();
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e1) {
-                // Do nothing
+            if (!flowControl) {
+                flushOutput();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e1) {
+                    // Do nothing
+                }
             }
 
             serialPort.writeString(":");
-            flushOutput();
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e1) {
-                // Do nothing
+            if (!flowControl) {
+                flushOutput();
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e1) {
+                    // Do nothing
+                }
             }
 
             checksum = 0;
             for (int i = 0; i < length; i++) {
                 data = is.read();
                 serialPort.writeString(String.format("%02X", data & 0xFF));
-                flushOutput();
+                if (!flowControl) {
+                    flushOutput();
+                }
                 checksum += data & 0xFF;
                 if (i > 0 && (i & 127) == 0) {
                     waitDot();
@@ -717,11 +762,13 @@ public class SerialTerminal {
             }
 
             serialPort.writeString(">");
-            flushOutput();
-            if ((length & 127) != 0) {
-                waitDot();
-                if (monitor != null) {
-                    monitor.worked(1);
+            if (!flowControl) {
+                flushOutput();
+                if ((length & 127) != 0) {
+                    waitDot();
+                    if (monitor != null) {
+                        monitor.worked(1);
+                    }
                 }
             }
         } finally {
@@ -733,9 +780,12 @@ public class SerialTerminal {
         }
 
         serialPort.writeString(String.format("%02X", length & 0xFF));
-        flushOutput();
+        if (!flowControl) {
+            flushOutput();
+        }
 
         serialPort.writeString(String.format("%02X", checksum & 0xFF));
+
         flushOutput();
     }
 
@@ -1092,6 +1142,7 @@ public class SerialTerminal {
 
             @Override
             public void run() {
+                Preferences preferences = Preferences.getInstance();
                 try {
                     SerialTerminal app = new SerialTerminal();
                     app.open();
@@ -1101,6 +1152,8 @@ public class SerialTerminal {
                             display.sleep();
                         }
                     }
+
+                    preferences.save();
                 } catch (Exception e) {
                     e.printStackTrace();
                     return;

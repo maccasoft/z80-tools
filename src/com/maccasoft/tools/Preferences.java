@@ -85,6 +85,7 @@ public class Preferences {
 
     String serialPort;
     int serialBaud;
+    boolean serialFlowControl;
     String downloadCommand;
     String xmodemCommand;
 
@@ -333,6 +334,14 @@ public class Preferences {
 
     public void setSerialBaud(int serialBaud) {
         this.serialBaud = serialBaud;
+    }
+
+    public boolean isSerialFlowControl() {
+        return serialFlowControl;
+    }
+
+    public void setSerialFlowControl(boolean serialFlowControl) {
+        this.serialFlowControl = serialFlowControl;
     }
 
     public String getDownloadCommand() {
