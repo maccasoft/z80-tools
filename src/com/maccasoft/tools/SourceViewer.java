@@ -119,7 +119,7 @@ public class SourceViewer {
         ruler.setFont(font);
         ruler.setText(text);
 
-        codeRuler.setFont(font);
+        codeRuler.setFont(font, fontBold);
         codeRuler.setText(text);
 
         currentLine = 0;
@@ -374,7 +374,7 @@ public class SourceViewer {
         text.setCaretOffset(text.getCaretOffset());
 
         ruler.setFont(font);
-        codeRuler.setFont(font);
+        codeRuler.setFont(font, fontBold);
 
         container.getDisplay().asyncExec(new Runnable() {
 
@@ -416,6 +416,20 @@ public class SourceViewer {
         styleMap.put(TokenId.StringLiteral1, new TextStyle(font, new Color(Display.getDefault(), 0xFF, 0x00, 0xFF), null));
         styleMap.put(TokenId.StringLiteral2, new TextStyle(font, new Color(Display.getDefault(), 0xFF, 0x00, 0xFF), null));
         styleMap.put(TokenId.NumberLiteral, new TextStyle(font, new Color(Display.getDefault(), 0xFF, 0x00, 0xFF), null));
+    }
+
+    public void toggleBreakpoint(int address) {
+        codeRuler.toggleBreakpoint(address);
+        codeRuler.redraw();
+    }
+
+    public boolean isBreakpoint(int address) {
+        return codeRuler.isBreakpoint(address);
+    }
+
+    public void resetBreakpoints() {
+        codeRuler.resetBreakpoints();
+        codeRuler.redraw();
     }
 
 }

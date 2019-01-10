@@ -1776,6 +1776,12 @@ public class Z80 {
         breakpointAt[address & 0xffff] = state;
     }
 
+    public final void setBreakpoints(int[] address, boolean state) {
+        for (int i = 0; i < address.length; i++) {
+            breakpointAt[address[i] & 0xffff] = state;
+        }
+    }
+
     public void resetBreakpoints() {
         Arrays.fill(breakpointAt, false);
     }

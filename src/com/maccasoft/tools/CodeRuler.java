@@ -9,6 +9,10 @@
 
 package com.maccasoft.tools;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CaretEvent;
 import org.eclipse.swt.custom.CaretListener;
@@ -37,6 +41,7 @@ public class CodeRuler {
 
     StyledText text;
     Source source;
+    boolean[] breakpoint;
 
     int leftMargin;
     int rightMargin;
@@ -45,6 +50,9 @@ public class CodeRuler {
     private int lineCount;
     private int currentLine;
     private Color currentLineBackground;
+
+    private Font font;
+    private Font fontBold;
 
     final PaintListener paintListener = new PaintListener() {
 
@@ -101,6 +109,8 @@ public class CodeRuler {
 
         currentLine = 0;
         currentLineBackground = new Color(Display.getDefault(), 232, 242, 254);
+
+        breakpoint = new boolean[65536];
     }
 
     public void setText(StyledText text) {
@@ -128,6 +138,7 @@ public class CodeRuler {
 
             if (source != null && lineNumber >= 0 && lineNumber < source.getLines().size()) {
                 Line line = source.getLines().get(lineNumber);
+                int address = line.getScope().getAddress();
                 byte[] code = line.getBytes();
 
                 StringBuilder sb = new StringBuilder();
@@ -145,6 +156,7 @@ public class CodeRuler {
                 else {
                     gc.setBackground(canvas.getBackground());
                 }
+                gc.setFont((breakpoint[address] && code.length != 0) ? fontBold : font);
                 gc.drawString(sb.toString(), leftMargin, y, true);
             }
 
@@ -152,7 +164,10 @@ public class CodeRuler {
         }
     }
 
-    public void setFont(Font font) {
+    public void setFont(Font font, Font boldFont) {
+        this.font = font;
+        this.fontBold = boldFont;
+
         canvas.setFont(font);
 
         GC gc = new GC(canvas);
@@ -172,4 +187,32 @@ public class CodeRuler {
     public void redraw() {
         canvas.redraw();
     }
+
+    public int[] getBreakpoints() {
+        List<Integer> l = new ArrayList<Integer>();
+        for (int i = 0; i < breakpoint.length; i++) {
+            if (breakpoint[i]) {
+                l.add(i);
+            }
+        }
+
+        int[] result = new int[l.size()];
+        for (int i = 0; i < l.size(); i++) {
+            result[i] = l.get(i);
+        }
+        return result;
+    }
+
+    public void toggleBreakpoint(int address) {
+        breakpoint[address] = !breakpoint[address];
+    }
+
+    public boolean isBreakpoint(int address) {
+        return breakpoint[address];
+    }
+
+    public void resetBreakpoints() {
+        Arrays.fill(breakpoint, false);
+    }
+
 }

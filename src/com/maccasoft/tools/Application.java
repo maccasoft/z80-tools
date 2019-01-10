@@ -63,6 +63,8 @@ import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.MenuEvent;
 import org.eclipse.swt.events.MenuListener;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.TraverseEvent;
@@ -237,7 +239,7 @@ public class Application {
                 return;
             }
 
-            display.asyncExec(stepOverRunnable);
+            display.asyncExec(this);
         }
     };
 
@@ -255,7 +257,19 @@ public class Application {
                 return;
             }
 
-            display.asyncExec(runToLineRunnable);
+            display.asyncExec(this);
+        }
+    };
+
+    final Runnable runCodeRunnable = new Runnable() {
+
+        @Override
+        public void run() {
+            if (stepOverPC1 == -1) {
+                return;
+            }
+            proc.execute();
+            display.asyncExec(this);
         }
     };
 
@@ -962,6 +976,37 @@ public class Application {
         menuItem.setMenu(menu);
 
         MenuItem item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Run\tF5");
+        item.setAccelerator(SWT.F5);
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleRun();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Stop");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleStop();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        item = new MenuItem(menu, SWT.PUSH);
         item.setText("Step into\tF8");
         item.setAccelerator(SWT.F8);
         item.addListener(SWT.Selection, new Listener() {
@@ -1008,13 +1053,28 @@ public class Application {
         new MenuItem(menu, SWT.SEPARATOR);
 
         item = new MenuItem(menu, SWT.PUSH);
-        item.setText("Stop");
+        item.setText("Toggle breakpoint\tCtrl+Shift+B");
+        item.setAccelerator(SWT.MOD1 + SWT.MOD2 + 'B');
         item.addListener(SWT.Selection, new Listener() {
 
             @Override
             public void handleEvent(Event e) {
                 try {
-                    handleStop();
+                    handleToggleBreakpoint();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Clear all breakpoints");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleClearBreakpoints();
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -1515,6 +1575,13 @@ public class Application {
 
         viewer = new SourceViewer(composite, new Z80TokenMarker());
         viewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        viewer.getStyledText().addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mouseDoubleClick(MouseEvent e) {
+                handleToggleBreakpoint();
+            }
+        });
 
         registers = new Registers(composite);
         registers.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false));
@@ -2356,36 +2423,43 @@ public class Application {
                         public int breakpoint(int address, int opcode) {
 
                             // Emulate CP/M Syscall at address 5
-                            switch (proc.getRegC()) {
-                                case 0: // BDOS 0 System Reset
-                                    out.println("Z80 reset after " + memIoOps.getTstates() + " t-states");
-                                    break;
-                                case 2: // BDOS 2 console char output
-                                    if (debugTerminal != null) {
-                                        debugTerminal.write(proc.getRegE());
-                                    }
-                                    else {
-                                        out.write(proc.getRegE());
-                                    }
-                                    break;
-                                case 9: {// BDOS 9 console string output (string terminated by "$")
-                                    int strAddr = proc.getRegDE();
-                                    if (debugTerminal != null) {
-                                        while (memIoOps.peek8(strAddr) != '$') {
-                                            debugTerminal.write(memIoOps.peek8(strAddr++));
+                            if (address == 0x0005) {
+                                switch (proc.getRegC()) {
+                                    case 0: // BDOS 0 System Reset
+                                        out.println("Z80 reset after " + memIoOps.getTstates() + " t-states");
+                                        break;
+                                    case 2: // BDOS 2 console char output
+                                        if (debugTerminal != null) {
+                                            debugTerminal.write(proc.getRegE());
                                         }
-                                    }
-                                    else {
-                                        while (memIoOps.peek8(strAddr) != '$') {
-                                            out.write(memIoOps.peek8(strAddr++));
+                                        else {
+                                            out.write(proc.getRegE());
                                         }
+                                        break;
+                                    case 9: { // BDOS 9 console string output (string terminated by "$")
+                                        int strAddr = proc.getRegDE();
+                                        if (debugTerminal != null) {
+                                            while (memIoOps.peek8(strAddr) != '$') {
+                                                debugTerminal.write(memIoOps.peek8(strAddr++));
+                                            }
+                                        }
+                                        else {
+                                            while (memIoOps.peek8(strAddr) != '$') {
+                                                out.write(memIoOps.peek8(strAddr++));
+                                            }
+                                        }
+                                        break;
                                     }
-                                    break;
+                                    default:
+                                        out.println("BDOS Call " + proc.getRegC());
+                                        break;
                                 }
-                                default:
-                                    out.println("BDOS Call " + proc.getRegC());
-                                    break;
+
+                                return opcode;
                             }
+
+                            handleStop();
+
                             return opcode;
                         }
 
@@ -2582,6 +2656,32 @@ public class Application {
         stepOverPC1 = stepOverPC2 = -1;
         memory.clearUpdates();
         updateDebuggerState();
+    }
+
+    private void handleToggleBreakpoint() {
+        int caretOffset = viewer.getStyledText().getCaretOffset();
+        int lineAtOffset = viewer.getStyledText().getLineAtOffset(caretOffset);
+
+        Line line = viewer.getSource().getLines().get(lineAtOffset);
+        if (line != null) {
+            int address = line.getScope().getAddress();
+            viewer.toggleBreakpoint(address);
+            proc.setBreakpoint(address, viewer.isBreakpoint(address));
+        }
+    }
+
+    private void handleClearBreakpoints() {
+        viewer.resetBreakpoints();
+        proc.resetBreakpoints();
+    }
+
+    private void handleRun() {
+        stepOverPC1 = 0;
+        stepOverPC2 = -1;
+        memory.clearUpdates();
+        viewer.getControl().setFocus();
+
+        display.asyncExec(runCodeRunnable);
     }
 
     void updateDebuggerState() {
