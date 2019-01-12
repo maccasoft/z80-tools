@@ -362,15 +362,25 @@ public class Parser {
     private class ArgumentCharacterState extends State {
         @Override
         public State parse(char character) {
-            if (character == '\\') {
+            if (character == '\'') {
+                if (accumulator.length() == 1) {
+                    expressionBuilder.addValueToken(new CharacterLiteral(accumulator.charAt(0)));
+                }
+                else {
+                    expressionBuilder.addValueToken(new StringLiteral(accumulator.toString()));
+                }
+                accumulator.setLength(0);
+                return argumentOperatorState;
+            }
+            else if (character == '\\') {
                 return argumentCharacterEscapeState;
             }
-            else if (character == '\'' || character == '\n' || character == '\0') {
+            else if (character == '\n' || character == '\0') {
                 throw new SyntaxError();
             }
             else {
                 accumulator.append(character);
-                return argumentCharacterEndState;
+                return argumentCharacterState;
             }
         }
     }
@@ -379,22 +389,48 @@ public class Parser {
     private class ArgumentCharacterEscapeState extends State {
         @Override
         public State parse(char character) {
-            State state = argumentStringEscapeState.parse(character);
-            if (state == argumentStringState) {
-                return argumentCharacterEndState;
+            if (character == '0') {
+                accumulator.append('\0');
+                return argumentCharacterState;
             }
-            throw new AssemblyException("Unexpected state.");
-        }
-    }
-
-    private ArgumentCharacterEndState argumentCharacterEndState = new ArgumentCharacterEndState();
-    private class ArgumentCharacterEndState extends State {
-        @Override
-        public State parse(char character) {
-            if (character == '\'') {
-                expressionBuilder.addValueToken(new CharacterLiteral(accumulator.charAt(0)));
-                accumulator.setLength(0);
-                return argumentOperatorState;
+            else if (character == 'a') {
+                accumulator.append('\7');
+                return argumentCharacterState;
+            }
+            else if (character == 't') {
+                accumulator.append('\t');
+                return argumentCharacterState;
+            }
+            else if (character == 'n') {
+                accumulator.append('\n');
+                return argumentCharacterState;
+            }
+            else if (character == 'f') {
+                accumulator.append('\f');
+                return argumentCharacterState;
+            }
+            else if (character == 'r') {
+                accumulator.append('\r');
+                return argumentCharacterState;
+            }
+            else if (character == 'e') {
+                accumulator.append('\33');
+                return argumentCharacterState;
+            }
+            else if (character == '"') {
+                accumulator.append('"');
+                return argumentCharacterState;
+            }
+            else if (character == '\'') {
+                accumulator.append('\'');
+                return argumentCharacterState;
+            }
+            else if (character == '\\') {
+                accumulator.append('\\');
+                return argumentCharacterState;
+            }
+            else if (character == '\n' || character == '\0') {
+                throw new SyntaxError();
             }
             else {
                 throw new SyntaxError();

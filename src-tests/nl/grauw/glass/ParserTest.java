@@ -14,6 +14,7 @@ import nl.grauw.glass.expressions.Expression;
 import nl.grauw.glass.expressions.ExpressionBuilder.ExpressionError;
 import nl.grauw.glass.expressions.Flag;
 import nl.grauw.glass.expressions.IntegerLiteral;
+import nl.grauw.glass.expressions.StringLiteral;
 
 public class ParserTest {
 
@@ -167,6 +168,36 @@ public class ParserTest {
         assertEquals(Flag.PO, parseExpression("!pe").getFlag());
         assertEquals(Flag.M, parseExpression("!p").getFlag());
         assertEquals(Flag.P, parseExpression("!m").getFlag());
+    }
+
+    @Test
+    public void testCharacterStringLiteral() {
+        assertEquals("test", ((StringLiteral) parseExpression("'test'")).getString());
+    }
+
+    @Test
+    public void testStringLiteral() {
+        assertEquals("test", ((StringLiteral) parseExpression("\"test\"")).getString());
+    }
+
+    @Test
+    public void testStringLiteralEscape() {
+        assertEquals("\t", ((StringLiteral) parseExpression("\"\\t\"")).getString());
+    }
+
+    @Test(expected = SyntaxError.class)
+    public void testStringLiteralTooShort() {
+        parse("\"\"");
+    }
+
+    @Test(expected = SyntaxError.class)
+    public void testStringLiteralUnclosed() {
+        parse("\"");
+    }
+
+    @Test(expected = SyntaxError.class)
+    public void testStringLiteralUnclosedEscape() {
+        parse("\"\\");
     }
 
     public Line parse(String text) {
