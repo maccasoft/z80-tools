@@ -564,10 +564,13 @@ public class Application {
             }
         });
 
-        new MenuItem(menu, SWT.SEPARATOR);
+        item = getSystemMenuItem(SWT.ID_PREFERENCES);
+        if (item == null) {
+            new MenuItem(menu, SWT.SEPARATOR);
 
-        item = new MenuItem(menu, SWT.PUSH);
-        item.setText("Preferences");
+            item = new MenuItem(menu, SWT.PUSH);
+            item.setText("Preferences");
+        }
         item.addListener(SWT.Selection, new Listener() {
 
             @Override
@@ -600,8 +603,11 @@ public class Application {
             }
         });
 
-        item = new MenuItem(menu, SWT.PUSH);
-        item.setText("Exit");
+        item = getSystemMenuItem(SWT.ID_QUIT);
+        if (item == null) {
+            item = new MenuItem(menu, SWT.PUSH);
+            item.setText("Exit");
+        }
         item.addListener(SWT.Selection, new Listener() {
 
             @Override
@@ -1100,14 +1106,17 @@ public class Application {
     }
 
     void createHelpMenu(Menu parent) {
-        Menu menu = new Menu(parent.getParent(), SWT.DROP_DOWN);
+        MenuItem item = getSystemMenuItem(SWT.ID_PREFERENCES);
+        if (item == null) {
+            Menu menu = new Menu(parent.getParent(), SWT.DROP_DOWN);
 
-        MenuItem item = new MenuItem(parent, SWT.CASCADE);
-        item.setText("&Help");
-        item.setMenu(menu);
+            item = new MenuItem(parent, SWT.CASCADE);
+            item.setText("&Help");
+            item.setMenu(menu);
 
-        item = new MenuItem(menu, SWT.PUSH);
-        item.setText("About " + APP_TITLE);
+            item = new MenuItem(menu, SWT.PUSH);
+            item.setText("About " + APP_TITLE);
+        }
         item.addListener(SWT.Selection, new Listener() {
 
             @Override
@@ -1116,6 +1125,28 @@ public class Application {
                 dlg.open();
             }
         });
+    }
+
+    private MenuItem getSystemMenuItem(int id) {
+        Menu menu = display.getSystemMenu();
+        if (menu != null) {
+            for (MenuItem item : menu.getItems()) {
+                if (item.getID() == id) {
+                    return item;
+                }
+            }
+        }
+
+        menu = display.getMenuBar();
+        if (menu != null) {
+            for (MenuItem item : menu.getItems()) {
+                if (item.getID() == id) {
+                    return item;
+                }
+            }
+        }
+
+        return null;
     }
 
     ToolBar createToolbar(Composite parent) {
@@ -2846,6 +2877,8 @@ public class Application {
     }
 
     static {
+        Display.setAppName(APP_TITLE);
+        Display.setAppVersion(APP_VERSION);
         System.setProperty("SWT_GTK3", "0");
     }
 

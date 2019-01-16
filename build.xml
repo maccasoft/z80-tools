@@ -170,6 +170,7 @@
             <option value="-Dcom.apple.macos.useScreenMenuBar=true"/>
             <option value="-Xms128M"/>
             <option value="-Xmx512M"/>
+            <option value="-XstartOnFirstThread"/>
         </bundleapp>
 
         <copy todir="${work}/${mac-folder}.app/Contents/Java" includeemptydirs="false">
