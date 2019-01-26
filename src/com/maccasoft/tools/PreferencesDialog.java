@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Marco Maccaferri and others.
+ * Copyright (c) 2018-19 Marco Maccaferri and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -27,6 +27,7 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.FontDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.List;
@@ -73,6 +74,12 @@ public class PreferencesDialog extends Dialog {
     Text downloadCommand;
     Text xmodemCommand;
 
+    Text romImage1;
+    Text romAddress1;
+    Text romImage2;
+    Text romAddress2;
+    Text compactFlashImage;
+
     Preferences preferences;
     String defaultFont;
 
@@ -96,7 +103,7 @@ public class PreferencesDialog extends Dialog {
         layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
         layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
         composite.setLayout(layout);
-        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         if ("win32".equals(SWT.getPlatform())) {
             defaultFont = StringConverter.asString(new FontData("Courier New", 9, SWT.NONE));
@@ -119,6 +126,7 @@ public class PreferencesDialog extends Dialog {
         createGeneralPage(stack);
         createAssemblerPage(stack);
         createEditorPage(stack);
+        createEmulatorPage(stack);
         createFormatterPage(stack);
 
         stackLayout.topControl = stack.getChildren()[0];
@@ -146,7 +154,7 @@ public class PreferencesDialog extends Dialog {
         layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
         layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
         composite.setLayout(layout);
-        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         pages.add("General");
 
@@ -290,7 +298,7 @@ public class PreferencesDialog extends Dialog {
 
         label = new Label(composite, SWT.NONE);
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, 2, 1));
-        ((GridData) label.getLayoutData()).heightHint = convertHeightInCharsToPixels(7);
+        ((GridData) label.getLayoutData()).heightHint = convertHeightInCharsToPixels(1);
     }
 
     void updateRootDirectoryButtons() {
@@ -307,7 +315,7 @@ public class PreferencesDialog extends Dialog {
         layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
         layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
         composite.setLayout(layout);
-        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         pages.add("Assembler");
 
@@ -453,7 +461,7 @@ public class PreferencesDialog extends Dialog {
         layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
         layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
         composite.setLayout(layout);
-        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         pages.add("Editor");
 
@@ -514,7 +522,7 @@ public class PreferencesDialog extends Dialog {
         layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
         layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
         composite.setLayout(layout);
-        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         pages.add("Formatter");
 
@@ -567,6 +575,143 @@ public class PreferencesDialog extends Dialog {
         directivePrefix.select(preferences.getDirectivePrefix());
     }
 
+    void createEmulatorPage(Composite parent) {
+        Composite composite = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginHeight = layout.marginWidth = 0;
+        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
+        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
+        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        pages.add("Emulator");
+
+        Label label = new Label(composite, SWT.NONE);
+        label.setText("ROM images");
+        Composite container = new Composite(composite, SWT.NONE);
+        layout = new GridLayout(3, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        romAddress1 = new Text(container, SWT.BORDER);
+        romAddress1.setLayoutData(new GridData(convertWidthInCharsToPixels(5), SWT.DEFAULT));
+        romAddress1.setText(String.format("%04X", preferences.getRomAddress1()));
+
+        romImage1 = new Text(container, SWT.BORDER);
+        romImage1.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        if (preferences.getRomImage1() != null) {
+            romImage1.setText(preferences.getRomImage1());
+        }
+
+        Button button = new Button(container, SWT.PUSH);
+        button.setText("Browse");
+        button.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                FileDialog dlg = new FileDialog(getShell(), SWT.OPEN);
+                dlg.setText("Open ROM image");
+                dlg.setFilterNames(new String[] {
+                    "All files",
+                    "Rom images",
+                    "Source files"
+                });
+                dlg.setFilterExtensions(new String[] {
+                    "*.*",
+                    "*.BIN;*.bin",
+                    "*.ASM;*.asm"
+                });
+                dlg.setFilterIndex(1);
+                final String fileName = dlg.open();
+                if (fileName != null) {
+                    romImage1.setText(fileName);
+                }
+            }
+        });
+
+        new Label(composite, SWT.NONE);
+        container = new Composite(composite, SWT.NONE);
+        layout = new GridLayout(3, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        romAddress2 = new Text(container, SWT.BORDER);
+        romAddress2.setLayoutData(new GridData(convertWidthInCharsToPixels(5), SWT.DEFAULT));
+        romAddress2.setText(String.format("%04X", preferences.getRomAddress2()));
+
+        romImage2 = new Text(container, SWT.BORDER);
+        romImage2.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        if (preferences.getRomImage2() != null) {
+            romImage2.setText(preferences.getRomImage2());
+        }
+
+        button = new Button(container, SWT.PUSH);
+        button.setText("Browse");
+        button.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                FileDialog dlg = new FileDialog(getShell(), SWT.OPEN);
+                dlg.setText("Open ROM image");
+                dlg.setFilterNames(new String[] {
+                    "All files",
+                    "Rom images",
+                    "Source files"
+                });
+                dlg.setFilterExtensions(new String[] {
+                    "*.*",
+                    "*.BIN;*.bin",
+                    "*.ASM;*.asm"
+                });
+                dlg.setFilterIndex(1);
+                final String fileName = dlg.open();
+                if (fileName != null) {
+                    romImage2.setText(fileName);
+                }
+            }
+        });
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("CF card image");
+        container = new Composite(composite, SWT.NONE);
+        layout = new GridLayout(2, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        compactFlashImage = new Text(container, SWT.BORDER);
+        compactFlashImage.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        if (preferences.getCompactFlashImage() != null) {
+            compactFlashImage.setText(preferences.getCompactFlashImage());
+        }
+
+        button = new Button(container, SWT.PUSH);
+        button.setText("Browse");
+        button.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                FileDialog dlg = new FileDialog(getShell(), SWT.OPEN);
+                dlg.setText("Open Compact Flash image");
+                dlg.setFilterNames(new String[] {
+                    "All files",
+                    "Compact Flash images"
+                });
+                dlg.setFilterExtensions(new String[] {
+                    "*.*",
+                    "*.IMG;*.img"
+                });
+                dlg.setFilterIndex(1);
+                final String fileName = dlg.open();
+                if (fileName != null) {
+                    compactFlashImage.setText(fileName);
+                }
+            }
+        });
+    }
+
     void addSeparator(Composite parent) {
         Label label = new Label(parent, SWT.NONE);
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, ((GridLayout) parent.getLayout()).numColumns, 1));
@@ -597,6 +742,12 @@ public class PreferencesDialog extends Dialog {
         preferences.setGenerateListing(generateListing.getSelection());
         preferences.setDownloadCommand(downloadCommand.getText());
         preferences.setXmodemCommand(xmodemCommand.getText());
+
+        preferences.setRomAddress1(Integer.valueOf(romAddress1.getText(), 16));
+        preferences.setRomImage1(romImage1.getText());
+        preferences.setRomAddress2(Integer.valueOf(romAddress2.getText(), 16));
+        preferences.setRomImage2(romImage2.getText());
+        preferences.setCompactFlashImage(compactFlashImage.getText());
 
         super.okPressed();
     }

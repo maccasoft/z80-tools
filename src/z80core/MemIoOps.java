@@ -11,13 +11,12 @@ package z80core;
  */
 public class MemIoOps {
 
-    private byte z80Ram[] = null;
-    private byte z80Ports[] = null;
+    private byte[] z80Ram;
+    private byte[] z80Ports;
     private long tstates = 0;
 
     public MemIoOps() {
-        z80Ram = new byte[0x10000];
-        z80Ports = new byte[0x10000];
+
     }
 
     public MemIoOps(int ramSize, int portSize) {
@@ -42,11 +41,11 @@ public class MemIoOps {
         return z80Ram;
     }
 
-    public void setRam(byte ram[]) {
+    public void setRam(byte[] ram) {
         z80Ram = ram;
     }
 
-    public void setPorts(byte ports[]) {
+    public void setPorts(byte[] ports) {
         z80Ram = ports;
     }
 

@@ -130,6 +130,7 @@ public class Application {
 
     SerialTerminal terminal;
     DebugTerminal debugTerminal;
+    Emulator emulator;
 
     Z80 proc;
     MemIoOps memIoOps;
@@ -957,6 +958,21 @@ public class Application {
         });
 
         new MenuItem(menu, SWT.SEPARATOR);
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Emulator\tCtrl+Shift+E");
+        item.setAccelerator(SWT.MOD1 + SWT.MOD2 + 'E');
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleOpenEmulator();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
 
         item = new MenuItem(menu, SWT.PUSH);
         item.setText("Serial Terminal\tCtrl+Shift+T");
@@ -2376,7 +2392,7 @@ public class Application {
                         return;
                     }
 
-                    memIoOps = new MemIoOps() {
+                    memIoOps = new MemIoOps(65536, 256) {
 
                         public final static int SIOA_D = 0x81;
                         public final static int SIOA_C = 0x80;
@@ -2874,6 +2890,21 @@ public class Application {
 
         }).start();
 
+    }
+
+    private void handleOpenEmulator() {
+        if (emulator == null) {
+            emulator = new Emulator();
+            emulator.open();
+            emulator.getShell().addDisposeListener(new DisposeListener() {
+
+                @Override
+                public void widgetDisposed(DisposeEvent e) {
+                    emulator = null;
+                }
+            });
+        }
+        emulator.setFocus();
     }
 
     static {

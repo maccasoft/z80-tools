@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Marco Maccaferri and others.
+ * Copyright (c) 2018-19 Marco Maccaferri and others.
  * All rights reserved.
  *
  * This program and the accompanying materials are made available under
@@ -88,6 +88,12 @@ public class Preferences {
     boolean serialFlowControl;
     String downloadCommand;
     String xmodemCommand;
+
+    String romImage1;
+    int romAddress1;
+    String romImage2;
+    int romAddress2;
+    String compactFlashImage;
 
     int lastUploadType;
     String lastPath;
@@ -366,6 +372,46 @@ public class Preferences {
 
     public void setLastUploadType(int lastUploadType) {
         this.lastUploadType = lastUploadType;
+    }
+
+    public String getRomImage1() {
+        return romImage1;
+    }
+
+    public void setRomImage1(String romImage) {
+        this.romImage1 = romImage;
+    }
+
+    public int getRomAddress1() {
+        return romAddress1;
+    }
+
+    public void setRomAddress1(int romAddress) {
+        this.romAddress1 = romAddress;
+    }
+
+    public String getRomImage2() {
+        return romImage2;
+    }
+
+    public void setRomImage2(String romImage) {
+        this.romImage2 = romImage;
+    }
+
+    public int getRomAddress2() {
+        return romAddress2;
+    }
+
+    public void setRomAddress2(int romAddress) {
+        this.romAddress2 = romAddress;
+    }
+
+    public String getCompactFlashImage() {
+        return compactFlashImage;
+    }
+
+    public void setCompactFlashImage(String compactFlashImage) {
+        this.compactFlashImage = compactFlashImage;
     }
 
     public void save() throws IOException {
