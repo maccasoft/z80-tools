@@ -17,8 +17,11 @@ import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.resource.StringConverter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -82,6 +85,7 @@ public class PreferencesDialog extends Dialog {
 
     Preferences preferences;
     String defaultFont;
+    Font fontBold;
 
     public PreferencesDialog(Shell parentShell) {
         super(parentShell);
@@ -104,6 +108,7 @@ public class PreferencesDialog extends Dialog {
         layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
         composite.setLayout(layout);
         composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        applyDialogFont(composite);
 
         if ("win32".equals(SWT.getPlatform())) {
             defaultFont = StringConverter.asString(new FontData("Courier New", 9, SWT.NONE));
@@ -111,6 +116,16 @@ public class PreferencesDialog extends Dialog {
         else {
             defaultFont = StringConverter.asString(new FontData("mono", 9, SWT.NONE));
         }
+
+        FontData[] fontData = composite.getFont().getFontData();
+        fontBold = new Font(composite.getDisplay(), fontData[0].getName(), fontData[0].getHeight(), SWT.BOLD);
+        composite.addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                fontBold.dispose();
+            }
+        });
 
         pages = new List(composite, SWT.SIMPLE | SWT.BORDER);
         GridData gridData = new GridData(SWT.FILL, SWT.FILL, false, true);
@@ -131,8 +146,6 @@ public class PreferencesDialog extends Dialog {
 
         stackLayout.topControl = stack.getChildren()[0];
 
-        applyDialogFont(composite);
-
         pages.select(0);
         pages.addSelectionListener(new SelectionAdapter() {
 
@@ -148,18 +161,10 @@ public class PreferencesDialog extends Dialog {
     }
 
     void createGeneralPage(Composite parent) {
-        Composite composite = new Composite(parent, SWT.NONE);
-        GridLayout layout = new GridLayout(2, false);
-        layout.marginHeight = layout.marginWidth = 0;
-        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
-        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
-        composite.setLayout(layout);
-        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        pages.add("General");
+        Composite composite = createPage(parent, "General");
 
         Composite group = new Composite(composite, SWT.NONE);
-        layout = new GridLayout(2, false);
+        GridLayout layout = new GridLayout(2, false);
         layout.marginWidth = layout.marginHeight = 0;
         group.setLayout(layout);
         group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
@@ -309,18 +314,10 @@ public class PreferencesDialog extends Dialog {
     }
 
     void createAssemblerPage(Composite parent) {
-        Composite composite = new Composite(parent, SWT.NONE);
-        GridLayout layout = new GridLayout(2, false);
-        layout.marginHeight = layout.marginWidth = 0;
-        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
-        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
-        composite.setLayout(layout);
-        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        pages.add("Assembler");
+        Composite composite = createPage(parent, "Assembler");
 
         Composite group = new Composite(composite, SWT.NONE);
-        layout = new GridLayout(2, false);
+        GridLayout layout = new GridLayout(2, false);
         layout.marginWidth = layout.marginHeight = 0;
         group.setLayout(layout);
         group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
@@ -455,21 +452,13 @@ public class PreferencesDialog extends Dialog {
     }
 
     void createEditorPage(Composite parent) {
-        Composite composite = new Composite(parent, SWT.NONE);
-        GridLayout layout = new GridLayout(2, false);
-        layout.marginHeight = layout.marginWidth = 0;
-        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
-        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
-        composite.setLayout(layout);
-        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        pages.add("Editor");
+        Composite composite = createPage(parent, "Editor");
 
         Label label = new Label(composite, SWT.NONE);
         label.setText("Font");
 
         Composite container = new Composite(composite, SWT.NONE);
-        layout = new GridLayout(2, false);
+        GridLayout layout = new GridLayout(2, false);
         layout.marginWidth = layout.marginHeight = 0;
         container.setLayout(layout);
         container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -516,15 +505,7 @@ public class PreferencesDialog extends Dialog {
     }
 
     void createFormatterPage(Composite parent) {
-        Composite composite = new Composite(parent, SWT.NONE);
-        GridLayout layout = new GridLayout(2, false);
-        layout.marginHeight = layout.marginWidth = 0;
-        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
-        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
-        composite.setLayout(layout);
-        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        pages.add("Formatter");
+        Composite composite = createPage(parent, "Formatter");
 
         Label label = new Label(composite, SWT.NONE);
         label.setText("Mnemonic column");
@@ -576,20 +557,12 @@ public class PreferencesDialog extends Dialog {
     }
 
     void createEmulatorPage(Composite parent) {
-        Composite composite = new Composite(parent, SWT.NONE);
-        GridLayout layout = new GridLayout(2, false);
-        layout.marginHeight = layout.marginWidth = 0;
-        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
-        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
-        composite.setLayout(layout);
-        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        pages.add("Emulator");
+        Composite composite = createPage(parent, "Emulator");
 
         Label label = new Label(composite, SWT.NONE);
         label.setText("ROM images");
         Composite container = new Composite(composite, SWT.NONE);
-        layout = new GridLayout(3, false);
+        GridLayout layout = new GridLayout(3, false);
         layout.marginWidth = layout.marginHeight = 0;
         container.setLayout(layout);
         container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -716,6 +689,28 @@ public class PreferencesDialog extends Dialog {
         Label label = new Label(parent, SWT.NONE);
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, ((GridLayout) parent.getLayout()).numColumns, 1));
         ((GridData) label.getLayoutData()).heightHint = ((GridLayout) parent.getLayout()).marginTop;
+    }
+
+    Composite createPage(Composite parent, String text) {
+        Composite composite = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginHeight = layout.marginWidth = 0;
+        layout.verticalSpacing = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_SPACING);
+        layout.horizontalSpacing = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_SPACING);
+        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        Label label = new Label(composite, SWT.NONE);
+        label.setText(text);
+        label.setFont(fontBold);
+        label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, layout.numColumns, 1));
+
+        label = new Label(composite, SWT.SEPARATOR | SWT.HORIZONTAL);
+        label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, layout.numColumns, 1));
+
+        pages.add(text);
+
+        return composite;
     }
 
     @Override
