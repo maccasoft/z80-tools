@@ -9,6 +9,7 @@
 
 package com.maccasoft.tools;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -19,6 +20,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.events.FocusAdapter;
+import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Font;
@@ -87,6 +90,8 @@ public class PreferencesDialog extends Dialog {
     String defaultFont;
     Font fontBold;
 
+    static int lastPage;
+
     public PreferencesDialog(Shell parentShell) {
         super(parentShell);
         preferences = Preferences.getInstance();
@@ -144,15 +149,15 @@ public class PreferencesDialog extends Dialog {
         createEmulatorPage(stack);
         createFormatterPage(stack);
 
-        stackLayout.topControl = stack.getChildren()[0];
+        stackLayout.topControl = stack.getChildren()[lastPage];
 
-        pages.select(0);
+        pages.select(lastPage);
         pages.addSelectionListener(new SelectionAdapter() {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                int index = pages.getSelectionIndex();
-                stackLayout.topControl = stack.getChildren()[index];
+                lastPage = pages.getSelectionIndex();
+                stackLayout.topControl = stack.getChildren()[lastPage];
                 stack.layout();
             }
         });
@@ -167,7 +172,7 @@ public class PreferencesDialog extends Dialog {
         GridLayout layout = new GridLayout(2, false);
         layout.marginWidth = layout.marginHeight = 0;
         group.setLayout(layout);
-        group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+        group.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false, 2, 1));
 
         Label label = new Label(group, SWT.NONE);
         label.setText("File browser root paths");
@@ -175,8 +180,8 @@ public class PreferencesDialog extends Dialog {
 
         roots = new List(group, SWT.SINGLE | SWT.BORDER);
         GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gridData.widthHint = convertWidthInCharsToPixels(60);
-        gridData.heightHint = roots.getItemHeight() * 5 + roots.getBorderWidth() * 2;
+        gridData.widthHint = convertWidthInCharsToPixels(50);
+        gridData.heightHint = convertHeightInCharsToPixels(5) + roots.getBorderWidth() * 2;
         roots.setLayoutData(gridData);
         roots.addSelectionListener(new SelectionAdapter() {
 
@@ -190,6 +195,7 @@ public class PreferencesDialog extends Dialog {
         layout = new GridLayout(1, true);
         layout.marginWidth = layout.marginHeight = 0;
         container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.TOP, false, false));
 
         rootAdd = new Button(container, SWT.PUSH);
         rootAdd.setImage(ImageRegistry.getImageFromResources("add.png"));
@@ -199,6 +205,12 @@ public class PreferencesDialog extends Dialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 DirectoryDialog dlg = new DirectoryDialog(getShell());
+
+                int index = roots.getSelectionIndex();
+                if (index != -1) {
+                    dlg.setFilterPath(roots.getItem(index));
+                }
+
                 String s = dlg.open();
                 if (s != null) {
                     roots.add(s);
@@ -303,7 +315,7 @@ public class PreferencesDialog extends Dialog {
 
         label = new Label(composite, SWT.NONE);
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, 2, 1));
-        ((GridData) label.getLayoutData()).heightHint = convertHeightInCharsToPixels(1);
+        ((GridData) label.getLayoutData()).heightHint = convertHeightInCharsToPixels(3);
     }
 
     void updateRootDirectoryButtons() {
@@ -320,16 +332,16 @@ public class PreferencesDialog extends Dialog {
         GridLayout layout = new GridLayout(2, false);
         layout.marginWidth = layout.marginHeight = 0;
         group.setLayout(layout);
-        group.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+        group.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false, 2, 1));
 
         Label label = new Label(group, SWT.NONE);
         label.setText("Include paths");
         label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
 
         includes = new List(group, SWT.SINGLE | SWT.BORDER);
-        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gridData.widthHint = convertWidthInCharsToPixels(60);
-        gridData.heightHint = includes.getItemHeight() * 5 + includes.getBorderWidth() * 2;
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
+        gridData.widthHint = convertWidthInCharsToPixels(50);
+        gridData.heightHint = convertHeightInCharsToPixels(5) + includes.getBorderWidth() * 2;
         includes.setLayoutData(gridData);
         includes.addSelectionListener(new SelectionAdapter() {
 
@@ -343,6 +355,7 @@ public class PreferencesDialog extends Dialog {
         layout = new GridLayout(1, true);
         layout.marginWidth = layout.marginHeight = 0;
         container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.TOP, false, false));
 
         includesAdd = new Button(container, SWT.PUSH);
         includesAdd.setImage(ImageRegistry.getImageFromResources("add.png"));
@@ -352,6 +365,12 @@ public class PreferencesDialog extends Dialog {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 DirectoryDialog dlg = new DirectoryDialog(getShell());
+
+                int index = includes.getSelectionIndex();
+                if (index != -1) {
+                    dlg.setFilterPath(includes.getItem(index));
+                }
+
                 String s = dlg.open();
                 if (s != null) {
                     includes.add(s);
@@ -570,9 +589,23 @@ public class PreferencesDialog extends Dialog {
         romAddress1 = new Text(container, SWT.BORDER);
         romAddress1.setLayoutData(new GridData(convertWidthInCharsToPixels(5), SWT.DEFAULT));
         romAddress1.setText(String.format("%04X", preferences.getRomAddress1()));
+        romAddress1.addFocusListener(new FocusAdapter() {
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                try {
+                    int value = Integer.valueOf(((Text) e.widget).getText(), 16);
+                    ((Text) e.widget).setText(String.format("%04X", value));
+                } catch (Exception e1) {
+                    // Do nothing
+                }
+            }
+        });
 
         romImage1 = new Text(container, SWT.BORDER);
-        romImage1.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
+        gridData.widthHint = convertWidthInCharsToPixels(40);
+        romImage1.setLayoutData(gridData);
         if (preferences.getRomImage1() != null) {
             romImage1.setText(preferences.getRomImage1());
         }
@@ -595,10 +628,26 @@ public class PreferencesDialog extends Dialog {
                     "*.BIN;*.bin",
                     "*.ASM;*.asm"
                 });
-                dlg.setFilterIndex(1);
-                final String fileName = dlg.open();
-                if (fileName != null) {
-                    romImage1.setText(fileName);
+
+                String file = romImage1.getText();
+                if (!"".equals(file)) {
+                    dlg.setFilterPath(new File(file).getAbsoluteFile().getParent());
+                    if (file.toLowerCase().endsWith(".bin")) {
+                        dlg.setFilterIndex(1);
+                    }
+                    else if (file.toLowerCase().endsWith(".asm")) {
+                        dlg.setFilterIndex(2);
+                    }
+                    else {
+                        dlg.setFilterIndex(0);
+                    }
+                }
+                else {
+                    dlg.setFilterIndex(1);
+                }
+
+                if ((file = dlg.open()) != null) {
+                    romImage1.setText(file);
                 }
             }
         });
@@ -613,9 +662,23 @@ public class PreferencesDialog extends Dialog {
         romAddress2 = new Text(container, SWT.BORDER);
         romAddress2.setLayoutData(new GridData(convertWidthInCharsToPixels(5), SWT.DEFAULT));
         romAddress2.setText(String.format("%04X", preferences.getRomAddress2()));
+        romAddress2.addFocusListener(new FocusAdapter() {
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                try {
+                    int value = Integer.valueOf(((Text) e.widget).getText(), 16);
+                    ((Text) e.widget).setText(String.format("%04X", value));
+                } catch (Exception e1) {
+                    // Do nothing
+                }
+            }
+        });
 
         romImage2 = new Text(container, SWT.BORDER);
-        romImage2.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
+        gridData.widthHint = convertWidthInCharsToPixels(40);
+        romImage2.setLayoutData(gridData);
         if (preferences.getRomImage2() != null) {
             romImage2.setText(preferences.getRomImage2());
         }
@@ -638,10 +701,26 @@ public class PreferencesDialog extends Dialog {
                     "*.BIN;*.bin",
                     "*.ASM;*.asm"
                 });
-                dlg.setFilterIndex(1);
-                final String fileName = dlg.open();
-                if (fileName != null) {
-                    romImage2.setText(fileName);
+
+                String file = romImage2.getText();
+                if (!"".equals(file)) {
+                    dlg.setFilterPath(new File(file).getAbsoluteFile().getParent());
+                    if (file.toLowerCase().endsWith(".bin")) {
+                        dlg.setFilterIndex(1);
+                    }
+                    else if (file.toLowerCase().endsWith(".asm")) {
+                        dlg.setFilterIndex(2);
+                    }
+                    else {
+                        dlg.setFilterIndex(0);
+                    }
+                }
+                else {
+                    dlg.setFilterIndex(1);
+                }
+
+                if ((file = dlg.open()) != null) {
+                    romImage2.setText(file);
                 }
             }
         });
@@ -676,10 +755,23 @@ public class PreferencesDialog extends Dialog {
                     "*.*",
                     "*.IMG;*.img"
                 });
-                dlg.setFilterIndex(1);
-                final String fileName = dlg.open();
-                if (fileName != null) {
-                    compactFlashImage.setText(fileName);
+
+                String file = compactFlashImage.getText();
+                if (!"".equals(file)) {
+                    dlg.setFilterPath(new File(file).getAbsoluteFile().getParent());
+                    if (file.toLowerCase().endsWith(".img")) {
+                        dlg.setFilterIndex(1);
+                    }
+                    else {
+                        dlg.setFilterIndex(0);
+                    }
+                }
+                else {
+                    dlg.setFilterIndex(1);
+                }
+
+                if ((file = dlg.open()) != null) {
+                    compactFlashImage.setText(file);
                 }
             }
         });
