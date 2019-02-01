@@ -107,7 +107,7 @@ public class Terminal {
         display = parent.getDisplay();
         needsUpdate = new AtomicBoolean();
 
-        canvas = new Canvas(parent, SWT.NONE);
+        canvas = new Canvas(parent, SWT.DOUBLE_BUFFERED);
         canvas.setBackground(display.getSystemColor(SWT.COLOR_BLACK));
 
         font = new TerminalFont(8, 16);
