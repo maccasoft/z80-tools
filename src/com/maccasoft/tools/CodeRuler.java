@@ -30,8 +30,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.ScrollBar;
 
-import nl.grauw.glass.Line;
-import nl.grauw.glass.Source;
+import com.maccasoft.tools.SourceMap.LineEntry;
 
 public class CodeRuler {
 
@@ -40,7 +39,7 @@ public class CodeRuler {
     FontMetrics fontMetrics;
 
     StyledText text;
-    Source source;
+    SourceMap sourceMap;
     boolean[] breakpoint;
 
     int leftMargin;
@@ -119,8 +118,8 @@ public class CodeRuler {
         this.text.addCaretListener(caretListener);
     }
 
-    public void setSource(Source source) {
-        this.source = source;
+    public void setSourceMap(SourceMap sourceMap) {
+        this.sourceMap = sourceMap;
     }
 
     void onPaintControl(GC gc) {
@@ -136,18 +135,16 @@ public class CodeRuler {
                 break;
             }
 
-            if (source != null && lineNumber >= 0 && lineNumber < source.getLines().size()) {
-                Line line = source.getLines().get(lineNumber);
-                int address = line.getScope().getAddress();
-                byte[] code = line.getBytes();
+            if (sourceMap != null && lineNumber >= 0 && lineNumber < sourceMap.getLines().size()) {
+                LineEntry line = sourceMap.getLine(lineNumber);
 
                 StringBuilder sb = new StringBuilder();
-                sb.append(String.format("%04X ", line.getScope().getAddress()));
-                for (int i = 0; i < code.length; i++) {
+                sb.append(String.format("%04X ", line.address));
+                for (int i = 0; i < line.code.length; i++) {
                     if (i != 0) {
                         sb.append(' ');
                     }
-                    sb.append(String.format("%02X", code[i]));
+                    sb.append(String.format("%02X", line.code[i]));
                 }
                 if (lineNumber == currentLine) {
                     gc.setBackground(currentLineBackground);
@@ -156,7 +153,7 @@ public class CodeRuler {
                 else {
                     gc.setBackground(canvas.getBackground());
                 }
-                gc.setFont((breakpoint[address] && code.length != 0) ? fontBold : font);
+                gc.setFont((breakpoint[line.address] && line.code.length != 0) ? fontBold : font);
                 gc.drawString(sb.toString(), leftMargin, y, true);
             }
 

@@ -38,14 +38,12 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 
+import com.maccasoft.tools.SourceMap.LineEntry;
 import com.maccasoft.tools.editor.EditorUtil;
 import com.maccasoft.tools.editor.LineNumbersRuler;
 import com.maccasoft.tools.editor.Token;
 import com.maccasoft.tools.editor.TokenId;
 import com.maccasoft.tools.editor.TokenMarker;
-
-import nl.grauw.glass.Line;
-import nl.grauw.glass.Source;
 
 public class SourceViewer {
 
@@ -62,7 +60,7 @@ public class SourceViewer {
     private Font fontBold;
     private Map<TokenId, TextStyle> styleMap = new HashMap<TokenId, TextStyle>();
 
-    Source source;
+    SourceMap sourceMap;
 
     boolean showLineNumbers = true;
 
@@ -183,21 +181,21 @@ public class SourceViewer {
         return text;
     }
 
-    public Source getSource() {
-        return source;
+    public SourceMap getSourceMap() {
+        return sourceMap;
     }
 
-    public void setSource(Source source) {
-        this.source = source;
+    public void setSourceMap(SourceMap sourceMap) {
+        this.sourceMap = sourceMap;
 
         StringBuilder sb = new StringBuilder();
-        for (Line line : source.getLines()) {
-            sb.append(line.getSourceText());
+        for (LineEntry lineEntry : sourceMap.getLines()) {
+            sb.append(lineEntry.line.getSourceText());
             sb.append("\r\n");
         }
         String text = sb.toString();
 
-        codeRuler.setSource(source);
+        codeRuler.setSourceMap(sourceMap);
 
         currentLine = 0;
         this.text.setText(text);

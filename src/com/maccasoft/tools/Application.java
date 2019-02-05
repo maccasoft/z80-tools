@@ -27,10 +27,8 @@ import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.databinding.observable.Realm;
@@ -89,6 +87,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 
+import com.maccasoft.tools.SourceMap.LineEntry;
 import com.maccasoft.tools.editor.Z80TokenMarker;
 import com.maccasoft.tools.internal.BusyIndicator;
 import com.maccasoft.tools.internal.ImageRegistry;
@@ -134,19 +133,7 @@ public class Application {
 
     Z80 proc;
     MemIoOps memIoOps;
-    int entryAddress;
-
-    class LineEntry {
-        int lineNumber;
-        Line line;
-
-        LineEntry(int lineNumber, Line line) {
-            this.lineNumber = lineNumber;
-            this.line = line;
-        }
-    }
-
-    Map<Integer, LineEntry> list;
+    SourceMap sourceMap;
 
     int stepOverPC1;
     int stepOverPC2;
@@ -2518,27 +2505,15 @@ public class Application {
                     });
                     proc.setBreakpoint(0x0005, true);
 
-                    list = new HashMap<Integer, LineEntry>();
-
-                    entryAddress = -1;
-
-                    int lineNumber = 0;
-                    for (Line line : source.getLines()) {
-                        int address = line.getScope().getAddress();
-                        byte[] code = line.getBytes();
-                        if (code.length != 0 && entryAddress == -1) {
-                            entryAddress = address;
-                        }
-                        System.arraycopy(code, 0, memIoOps.getRam(), address, code.length);
-                        list.put(address, new LineEntry(lineNumber++, line));
-                    }
+                    sourceMap = new SourceMap(source, memIoOps);
+                    sourceMap.build();
 
                     display.syncExec(new Runnable() {
 
                         @Override
                         public void run() {
                             memory.setData(memIoOps.getRam());
-                            viewer.setSource(source);
+                            viewer.setSourceMap(sourceMap);
                             handleReset();
 
                             reparentControls();
@@ -2613,9 +2588,9 @@ public class Application {
 
         proc.setPinReset();
         proc.reset();
-        proc.setRegPC(entryAddress);
+        proc.setRegPC(sourceMap.getEntryAddress());
 
-        memory.setSelection(entryAddress);
+        memory.setSelection(sourceMap.getEntryAddress());
 
         updateDebuggerState();
     }
@@ -2625,16 +2600,16 @@ public class Application {
         memory.clearUpdates();
         viewer.getControl().setFocus();
 
-        LineEntry lineEntry = list.get(proc.getRegPC());
+        LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
         if (lineEntry != null) {
-            stepOverPC1 = proc.getRegPC() + lineEntry.line.getSize();
+            stepOverPC1 = proc.getRegPC() + lineEntry.code.length;
             stepOverPC2 = memIoOps.peek16(proc.getRegSP());
             stepOverSP = proc.getRegSP();
             boolean repeat = isRepeatInstruction();
 
             proc.execute();
 
-            if (repeat || list.get(proc.getRegPC()) == null) {
+            if (repeat || sourceMap.getLineAtAddress(proc.getRegPC()) == null) {
                 display.asyncExec(stepOverRunnable);
                 return;
             }
@@ -2670,9 +2645,9 @@ public class Application {
         memory.clearUpdates();
         viewer.getControl().setFocus();
 
-        LineEntry lineEntry = list.get(proc.getRegPC());
+        LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
         if (lineEntry != null) {
-            stepOverPC1 = proc.getRegPC() + lineEntry.line.getSize();
+            stepOverPC1 = proc.getRegPC() + lineEntry.code.length;
             stepOverPC2 = memIoOps.peek16(proc.getRegSP());
             stepOverSP = proc.getRegSP();
             display.asyncExec(stepOverRunnable);
@@ -2691,10 +2666,10 @@ public class Application {
         int caretOffset = viewer.getStyledText().getCaretOffset();
         int lineAtOffset = viewer.getStyledText().getLineAtOffset(caretOffset);
 
-        Line line = viewer.getSource().getLines().get(lineAtOffset);
+        LineEntry lineEntry = viewer.getSourceMap().getLines().get(lineAtOffset);
 
-        if (line.getScope().getAddress() != proc.getRegPC()) {
-            stepOverPC1 = line.getScope().getAddress();
+        if (lineEntry.address != proc.getRegPC()) {
+            stepOverPC1 = lineEntry.address;
             display.asyncExec(runToLineRunnable);
         }
     }
@@ -2709,9 +2684,9 @@ public class Application {
         int caretOffset = viewer.getStyledText().getCaretOffset();
         int lineAtOffset = viewer.getStyledText().getLineAtOffset(caretOffset);
 
-        Line line = viewer.getSource().getLines().get(lineAtOffset);
-        if (line != null) {
-            int address = line.getScope().getAddress();
+        LineEntry lineEntry = viewer.getSourceMap().getLines().get(lineAtOffset);
+        if (lineEntry != null) {
+            int address = lineEntry.address;
             viewer.toggleBreakpoint(address);
             proc.setBreakpoint(address, viewer.isBreakpoint(address));
         }
@@ -2735,7 +2710,7 @@ public class Application {
         memory.update();
         registers.updateRegisters(proc);
 
-        LineEntry lineEntry = list.get(proc.getRegPC());
+        LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
         if (lineEntry != null) {
             viewer.gotToLineColumn(lineEntry.lineNumber, 0);
         }
