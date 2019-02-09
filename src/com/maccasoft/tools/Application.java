@@ -2459,10 +2459,19 @@ public class Application {
                             // Emulate CP/M Syscall at address 5
                             if (address == 0x0005) {
                                 switch (proc.getRegC()) {
-                                    case 0: // BDOS 0 System Reset
+                                    case 0x00: // BDOS 0 System Reset
                                         out.println("Z80 reset after " + memIoOps.getTstates() + " t-states");
                                         break;
-                                    case 2: // BDOS 2 console char output
+                                    case 0x01: // BDOS 1 console char input
+                                        try {
+                                            if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
+                                                proc.setRegA(debugTerminal.getInputStream().read());
+                                            }
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                        break;
+                                    case 0x02: // BDOS 2 console char output
                                         if (debugTerminal != null) {
                                             debugTerminal.write(proc.getRegE());
                                         }
@@ -2470,7 +2479,34 @@ public class Application {
                                             out.write(proc.getRegE());
                                         }
                                         break;
-                                    case 9: { // BDOS 9 console string output (string terminated by "$")
+                                    case 0x04: // BDOS 4 punch output
+                                    case 0x05: // BDOS 2 list output
+                                        out.write(proc.getRegE());
+                                        break;
+                                    case 0x06: { // BDOS 6 direct console I/O
+                                        if (proc.getRegE() == 0xFF) {
+                                            try {
+                                                if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
+                                                    proc.setRegA(debugTerminal.getInputStream().read());
+                                                }
+                                                else {
+                                                    proc.setRegA(0);
+                                                }
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                        else {
+                                            if (debugTerminal != null) {
+                                                debugTerminal.write(proc.getRegE());
+                                            }
+                                            else {
+                                                out.write(proc.getRegE());
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    case 0x09: { // BDOS 9 console string output (string terminated by "$")
                                         int strAddr = proc.getRegDE();
                                         if (debugTerminal != null) {
                                             while (memIoOps.peek8(strAddr) != '$') {
@@ -2484,6 +2520,18 @@ public class Application {
                                         }
                                         break;
                                     }
+                                    case 0x0B: // BDOS 11 console status
+                                        try {
+                                            if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
+                                                proc.setRegA(0xFF);
+                                            }
+                                            else {
+                                                proc.setRegA(0x00);
+                                            }
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                        break;
                                     default:
                                         out.println("BDOS Call " + proc.getRegC());
                                         break;
