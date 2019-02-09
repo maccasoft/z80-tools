@@ -84,6 +84,7 @@ public class SerialTerminal {
     String port;
     int baud;
     boolean flowControl;
+    long byteDelay;
     SerialPort serialPort;
 
     Preferences preferences;
@@ -421,6 +422,12 @@ public class SerialTerminal {
                         return;
                     }
                     serialPort.writeByte(b);
+                    if (!flowControl) {
+                        long ns = System.nanoTime();
+                        do {
+                            Thread.yield();
+                        } while ((System.nanoTime() - ns) <= byteDelay);
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -569,6 +576,8 @@ public class SerialTerminal {
             e.printStackTrace();
         }
 
+        byteDelay = (1000000000L / (baud / 10)) * 2;
+
         shell.setText("Serial Terminal on " + port);
     }
 
@@ -699,103 +708,120 @@ public class SerialTerminal {
     }
 
     public void uploadPackedBinary(String name, InputStream is, IProgressMonitor monitor) throws Exception {
-        int data, checksum;
-        String s;
-
+        int data, block;
         int length = is.available();
+        int checksum = 0;
 
-        try {
-            serialPort.removeEventListener();
-        } catch (SerialPortException e) {
-            // Do nothing
-        }
-
-        try {
+        if (flowControl) {
             String cmd = preferences.getDownloadCommand();
             if (cmd != null && !cmd.equals("")) {
                 cmd = cmd.replace("{0}", name.toUpperCase());
-                serialPort.writeString(cmd);
-                serialPort.writeInt(13);
-                flushOutput();
+                serialPort.writeString(cmd + "\r");
+
+                String s;
                 do {
                     s = readString();
                 } while (s.length() != 0 && !s.contains(cmd));
             }
 
             serialPort.writeString("U0\r");
-            if (!flowControl) {
-                flushOutput();
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e1) {
-                    // Do nothing
-                }
-            }
-
             serialPort.writeString(":");
-            if (!flowControl) {
-                flushOutput();
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e1) {
-                    // Do nothing
-                }
-            }
 
-            checksum = 0;
+            block = 0;
             for (int i = 0; i < length; i++) {
                 data = is.read();
                 serialPort.writeString(String.format("%02X", data & 0xFF));
-                if (!flowControl) {
-                    flushOutput();
-                }
+
                 checksum += data & 0xFF;
-                if (i > 0 && (i & 127) == 0) {
-                    waitDot();
+
+                block++;
+                if (block == 128) {
                     if (monitor != null) {
                         monitor.worked(1);
                     }
+                    block = 0;
                 }
+
                 if (monitor != null && monitor.isCanceled()) {
                     return;
                 }
             }
 
             serialPort.writeString(">");
-            if (!flowControl) {
-                flushOutput();
-                if ((length & 127) != 0) {
+            if (block != 128) {
+                if (monitor != null) {
+                    monitor.worked(1);
+                }
+            }
+
+            serialPort.writeString(String.format("%02X", length & 0xFF));
+            serialPort.writeString(String.format("%02X", checksum & 0xFF));
+        }
+        else {
+            try {
+                serialPort.removeEventListener();
+            } catch (SerialPortException e) {
+                // Do nothing
+            }
+
+            try {
+                String cmd = preferences.getDownloadCommand();
+                if (cmd != null && !cmd.equals("")) {
+                    cmd = cmd.replace("{0}", name.toUpperCase());
+                    writeString(cmd + "\r");
+
+                    String s;
+                    do {
+                        s = readString();
+                    } while (s.length() != 0 && !s.contains(cmd));
+                }
+
+                writeString("U0\r");
+                waitFlush(100);
+
+                writeString(":");
+                waitFlush(1000);
+
+                block = 0;
+                for (int i = 0; i < length; i++) {
+                    data = is.read();
+                    writeString(String.format("%02X", data & 0xFF));
+
+                    checksum += data & 0xFF;
+
+                    block++;
+                    if (block == 128) {
+                        //System.out.println("block");
+                        waitDot();
+                        if (monitor != null) {
+                            monitor.worked(1);
+                        }
+                        block = 0;
+                    }
+
+                    if (monitor != null && monitor.isCanceled()) {
+                        return;
+                    }
+                }
+
+                writeString(">");
+                if (block != 128) {
+                    //System.out.println("block");
                     waitDot();
                     if (monitor != null) {
                         monitor.worked(1);
                     }
                 }
+            } finally {
+                try {
+                    serialPort.addEventListener(serialEventListener);
+                } catch (SerialPortException e) {
+                    // Do nothing
+                }
             }
-        } finally {
-            try {
-                serialPort.addEventListener(serialEventListener);
-            } catch (SerialPortException e) {
-                // Do nothing
-            }
-        }
 
-        serialPort.writeString(String.format("%02X", length & 0xFF));
-        if (!flowControl) {
-            flushOutput();
-        }
-
-        serialPort.writeString(String.format("%02X", checksum & 0xFF));
-
-        flushOutput();
-    }
-
-    void flushOutput() throws SerialPortException {
-        while (serialPort.getOutputBufferBytesCount() > 0) {
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                // Do nothing
-            }
+            writeString(String.format("%02X", length & 0xFF));
+            writeString(String.format("%02X", checksum & 0xFF));
         }
     }
 
@@ -823,15 +849,12 @@ public class SerialTerminal {
     }
 
     void waitDot() throws SerialPortException, SerialPortTimeoutException {
-        while (true) {
-            byte[] b = serialPort.readBytes(1, 5000);
-            if (b != null) {
-                term.write(b[0]);
-                if (b[0] == '.') {
-                    break;
-                }
-            }
-        }
+        byte[] b;
+
+        do {
+            b = serialPort.readBytes(1, 5000);
+            term.write(b);
+        } while (b[0] != '.');
     }
 
     public void uploadXModem(String name, byte[] data, IProgressMonitor monitor) throws Exception {
@@ -853,12 +876,7 @@ public class SerialTerminal {
             String cmd = preferences.getXmodemCommand();
             if (cmd != null && !cmd.equals("")) {
                 cmd = cmd.replace("{0}", name.toUpperCase());
-                serialPort.writeString(cmd);
-                serialPort.writeInt(13);
-                flushOutput();
-                do {
-                    s = readString();
-                } while (s.length() != 0 && !s.contains(cmd));
+                writeString(cmd + "\r");
 
                 s = "";
                 while (true) {
@@ -917,6 +935,7 @@ public class SerialTerminal {
                             if (b[0] == NAK) {
                                 serialPort.writeByte(EOT);
                             }
+                            term.write('\r');
                             break;
                         }
                         if (i < data.length) {
@@ -932,30 +951,55 @@ public class SerialTerminal {
                     }
 
                     if (b[0] == ACK || b[0] == NAK) {
-                        serialPort.writeByte(SOH);
-                        serialPort.writeByte((byte) packet);
-                        serialPort.writeByte((byte) (packet ^ 0xFF));
+                        if (flowControl) {
+                            serialPort.writeByte(SOH);
+                            serialPort.writeByte((byte) packet);
+                            serialPort.writeByte((byte) (packet ^ 0xFF));
 
-                        int checksum = 0, crc = 0;
-                        for (int x = 0; x < data.length; x++) {
-                            serialPort.writeByte(data[x]);
-                            checksum += data[x] & 0xFF;
-                            crc = updateCrc(crc, data[x] & 0xFF);
-                        }
+                            int checksum = 0, crc = 0;
+                            for (int x = 0; x < data.length; x++) {
+                                serialPort.writeByte(data[x]);
+                                checksum += data[x] & 0xFF;
+                                crc = updateCrc(crc, data[x] & 0xFF);
+                            }
 
-                        if (doCrc) {
-                            serialPort.writeByte((byte) ((crc >> 8) & 0xFF));
-                            serialPort.writeByte((byte) (crc & 0xFF));
+                            if (doCrc) {
+                                serialPort.writeByte((byte) ((crc >> 8) & 0xFF));
+                                serialPort.writeByte((byte) (crc & 0xFF));
+                            }
+                            else {
+                                serialPort.writeByte((byte) checksum);
+                            }
                         }
                         else {
-                            serialPort.writeByte((byte) checksum);
+                            writeByte(SOH);
+                            writeByte((byte) packet);
+                            writeByte((byte) (packet ^ 0xFF));
+
+                            int checksum = 0, crc = 0;
+                            for (int x = 0; x < data.length; x++) {
+                                writeByte(data[x]);
+                                checksum += data[x] & 0xFF;
+                                crc = updateCrc(crc, data[x] & 0xFF);
+                            }
+
+                            if (doCrc) {
+                                writeByte((byte) ((crc >> 8) & 0xFF));
+                                writeByte((byte) (crc & 0xFF));
+                            }
+                            else {
+                                writeByte((byte) checksum);
+                            }
                         }
+                    }
+                    else {
+                        term.write(b);
                     }
 
                     if (monitor != null && monitor.isCanceled()) {
-                        serialPort.writeBytes(new byte[] {
-                            CAN, CAN, CAN
-                        });
+                        writeByte(CAN);
+                        writeByte(CAN);
+                        writeByte(CAN);
                         return;
                     }
                 } catch (SerialPortTimeoutException e) {
@@ -965,6 +1009,7 @@ public class SerialTerminal {
                     }
                 }
             }
+
         } finally {
             try {
                 serialPort.addEventListener(serialEventListener);
@@ -1129,6 +1174,60 @@ public class SerialTerminal {
 
     public Shell getShell() {
         return shell;
+    }
+
+    void writeString(String s) throws SerialPortException {
+        for (int i = 0; i < s.length(); i++) {
+            serialPort.writeInt(s.charAt(i));
+
+            long ns = System.nanoTime();
+            do {
+                Thread.yield();
+            } while ((System.nanoTime() - ns) <= byteDelay);
+        }
+    }
+
+    void waitFlush(int ms) throws SerialPortException {
+        byte[] b;
+
+        while (true) {
+            try {
+                b = serialPort.readBytes(1, ms);
+                term.write(b);
+            } catch (SerialPortTimeoutException e1) {
+                break;
+            }
+        }
+    }
+
+    void waitCRLF(int ms) throws SerialPortException {
+        byte[] b;
+
+        do {
+            try {
+                b = serialPort.readBytes(1, ms);
+                term.write(b);
+            } catch (SerialPortTimeoutException e1) {
+                break;
+            }
+        } while (b[0] != 0x0D);
+        do {
+            try {
+                b = serialPort.readBytes(1, ms);
+                term.write(b);
+            } catch (SerialPortTimeoutException e1) {
+                break;
+            }
+        } while (b[0] != 0x0A);
+    }
+
+    void writeByte(byte b) throws SerialPortException {
+        serialPort.writeByte(b);
+
+        long ns = System.nanoTime();
+        do {
+            Thread.yield();
+        } while ((System.nanoTime() - ns) <= byteDelay);
     }
 
     static {
