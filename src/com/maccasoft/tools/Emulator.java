@@ -13,6 +13,7 @@ package com.maccasoft.tools;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -121,30 +122,41 @@ public class Emulator {
             @Override
             protected void run() {
                 try {
-                    String s = preferences.getRomImage1();
-                    if (s != null && !"".equals(s)) {
-                        if (s.toUpperCase().endsWith(".ASM")) {
-                            byte[] rom = compile(new File(s));
-                            if (rom == null) {
-                                return;
-                            }
-                            machine.setRom(preferences.getRomAddress1(), rom);
-                        }
-                        else {
-                            machine.setRom(preferences.getRomAddress1(), new File(s));
-                        }
+                    String s1 = preferences.getRomImage1();
+                    String s2 = preferences.getRomImage2();
+
+                    if ((s1 == null || "".equals(s1)) && (s2 == null || "".equals(s2))) {
+                        InputStream is = Emulator.class.getResourceAsStream("rom.bin");
+                        byte[] rom = new byte[is.available()];
+                        is.read(rom);
+                        is.close();
+                        machine.setRom(0, rom);
                     }
-                    s = preferences.getRomImage2();
-                    if (s != null && !"".equals(s)) {
-                        if (s.toUpperCase().endsWith(".ASM")) {
-                            byte[] rom = compile(new File(s));
-                            if (rom == null) {
-                                return;
+                    else {
+                        if (s1 != null && !"".equals(s1)) {
+                            if (s1.toUpperCase().endsWith(".ASM")) {
+                                byte[] rom = compile(new File(s1));
+                                if (rom == null) {
+                                    return;
+                                }
+                                machine.setRom(preferences.getRomAddress1(), rom);
                             }
-                            machine.setRom(preferences.getRomAddress2(), rom);
+                            else {
+                                machine.setRom(preferences.getRomAddress1(), new File(s1));
+                            }
                         }
-                        else {
-                            machine.setRom(preferences.getRomAddress2(), new File(s));
+
+                        if (s2 != null && !"".equals(s2)) {
+                            if (s2.toUpperCase().endsWith(".ASM")) {
+                                byte[] rom = compile(new File(s2));
+                                if (rom == null) {
+                                    return;
+                                }
+                                machine.setRom(preferences.getRomAddress2(), rom);
+                            }
+                            else {
+                                machine.setRom(preferences.getRomAddress2(), new File(s2));
+                            }
                         }
                     }
                 } catch (Exception e) {
