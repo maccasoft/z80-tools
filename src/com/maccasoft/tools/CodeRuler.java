@@ -90,7 +90,7 @@ public class CodeRuler {
     };
 
     public CodeRuler(Composite parent) {
-        canvas = new Canvas(parent, SWT.NO_FOCUS);
+        canvas = new Canvas(parent, SWT.NO_FOCUS | SWT.DOUBLE_BUFFERED);
         canvas.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND));
         canvas.setForeground(Display.getDefault().getSystemColor(SWT.COLOR_WIDGET_FOREGROUND));
         canvas.setLayoutData(layoutData = new GridData(SWT.FILL, SWT.FILL, false, true));

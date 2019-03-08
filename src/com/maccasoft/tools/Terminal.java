@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Marco Maccaferri and others.
+ * Copyright (c) 2018-19 Marco Maccaferri and others.
  * All rights reserved.
  *
  * This program and the accompanying materials are made available under
@@ -9,8 +9,6 @@
  */
 
 package com.maccasoft.tools;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
@@ -38,7 +36,8 @@ import org.eclipse.swt.widgets.Display;
 
 public class Terminal {
 
-    public static final int FRAME_TIMER = 16;
+    public static final int CURSOR_BLINK_MS = 250;
+    public static final int REDRAW_MS = 25;
 
     public static final int CURSOR_OFF = 0x00;
     public static final int CURSOR_ON = 0x04;
@@ -55,7 +54,6 @@ public class Terminal {
     Image image;
     PaletteData paletteData;
     Rectangle bounds;
-    AtomicBoolean needsUpdate;
 
     TerminalFont font;
     Color[] colors;
@@ -75,27 +73,29 @@ public class Terminal {
 
     boolean cursorState;
 
-    final Runnable screenUpdateRunnable = new Runnable() {
-
-        int counter;
+    final Runnable cursorBlinkRunnable = new Runnable() {
 
         @Override
         public void run() {
             if (canvas.isDisposed() || bounds == null) {
                 return;
             }
-            counter++;
-            if (counter >= 15) {
-                if ((cursor & CURSOR_FLASH) != 0) {
-                    cursorState = !cursorState;
-                    canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
-                }
-                counter = 0;
+            if ((cursor & CURSOR_FLASH) != 0) {
+                cursorState = !cursorState;
+                canvas.redraw(cx, cy, font.getWidth(), font.getHeight(), false);
             }
-            if (needsUpdate.getAndSet(false)) {
-                canvas.redraw();
+            display.timerExec(CURSOR_BLINK_MS, this);
+        }
+    };
+
+    final Runnable redrawRunnable = new Runnable() {
+
+        @Override
+        public void run() {
+            if (canvas.isDisposed() || bounds == null) {
+                return;
             }
-            display.timerExec(FRAME_TIMER, this);
+            canvas.redraw();
         }
     };
 
@@ -105,7 +105,6 @@ public class Terminal {
 
     public Terminal(Composite parent) {
         display = parent.getDisplay();
-        needsUpdate = new AtomicBoolean();
 
         canvas = new Canvas(parent, SWT.DOUBLE_BUFFERED);
         canvas.setBackground(display.getSystemColor(SWT.COLOR_BLACK));
@@ -147,7 +146,7 @@ public class Terminal {
 
             @Override
             public void widgetDisposed(DisposeEvent e) {
-                display.timerExec(-1, screenUpdateRunnable);
+                display.timerExec(-1, cursorBlinkRunnable);
                 font.dispose();
                 for (int i = 0; i < colors.length; i++) {
                     colors[i].dispose();
@@ -245,7 +244,7 @@ public class Terminal {
 
         cursorState = (cursor & CURSOR_ON) != 0 && (cursor & CURSOR_FLASH) == 0;
 
-        display.timerExec(FRAME_TIMER, screenUpdateRunnable);
+        display.timerExec(CURSOR_BLINK_MS, cursorBlinkRunnable);
     }
 
     public int getCursorKeys() {
@@ -407,13 +406,19 @@ public class Terminal {
     }
 
     public void write(int c) {
-        GC gc = new GC(image);
-        try {
-            write(gc, c);
-            needsUpdate.set(true);
-        } finally {
-            gc.dispose();
-        }
+        display.syncExec(new Runnable() {
+
+            @Override
+            public void run() {
+                GC gc = new GC(image);
+                try {
+                    write(gc, c);
+                } finally {
+                    gc.dispose();
+                }
+                display.timerExec(REDRAW_MS, redrawRunnable);
+            }
+        });
     }
 
     void write(GC gc, int c) {
@@ -682,27 +687,39 @@ public class Terminal {
     }
 
     public void print(String s) {
-        GC gc = new GC(image);
-        try {
-            for (int i = 0; i < s.length(); i++) {
-                write(gc, s.charAt(i));
+        display.syncExec(new Runnable() {
+
+            @Override
+            public void run() {
+                GC gc = new GC(image);
+                try {
+                    for (int i = 0; i < s.length(); i++) {
+                        write(gc, s.charAt(i));
+                    }
+                } finally {
+                    gc.dispose();
+                }
+                display.timerExec(REDRAW_MS, redrawRunnable);
             }
-            needsUpdate.set(true);
-        } finally {
-            gc.dispose();
-        }
+        });
     }
 
     public void write(byte[] b) {
-        GC gc = new GC(image);
-        try {
-            for (int i = 0; i < b.length; i++) {
-                write(gc, b[i]);
+        display.syncExec(new Runnable() {
+
+            @Override
+            public void run() {
+                GC gc = new GC(image);
+                try {
+                    for (int i = 0; i < b.length; i++) {
+                        write(gc, b[i]);
+                    }
+                } finally {
+                    gc.dispose();
+                }
+                display.timerExec(REDRAW_MS, redrawRunnable);
             }
-            needsUpdate.set(true);
-        } finally {
-            gc.dispose();
-        }
+        });
     }
 
     public void setForeground(RGB color) {

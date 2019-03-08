@@ -196,13 +196,7 @@ public class Emulator {
             public void outPort(int port, int value) {
                 switch (port & 0xFF) {
                     case SIOA_D:
-                        display.syncExec(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                term.write(value);
-                            }
-                        });
+                        term.write(value);
                         break;
                     case SIOB_D:
                         break;

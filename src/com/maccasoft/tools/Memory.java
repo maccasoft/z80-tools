@@ -102,7 +102,7 @@ public class Memory {
             font = new Font(Display.getDefault(), "mono", 9, SWT.NONE);
         }
 
-        canvas = new Canvas(parent, SWT.V_SCROLL | SWT.BORDER) {
+        canvas = new Canvas(parent, SWT.V_SCROLL | SWT.BORDER | SWT.DOUBLE_BUFFERED) {
 
             @Override
             public Point computeSize(int wHint, int hHint, boolean changed) {
