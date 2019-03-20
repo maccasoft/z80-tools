@@ -222,8 +222,14 @@ public class Application {
 
             int currentPC = proc.getRegPC();
             proc.execute();
+
+            if (viewer.isBreakpoint(proc.getRegPC())) {
+                handleStop();
+                return;
+            }
+
             if (proc.getRegPC() == stepOverPC1 || proc.getRegPC() == stepOverPC2 || (proc.getRegPC() != currentPC && proc.getRegSP() == stepOverSP)) {
-                updateDebuggerState();
+                handleStop();
                 return;
             }
 
@@ -240,8 +246,14 @@ public class Application {
             }
 
             proc.execute();
+
+            if (viewer.isBreakpoint(proc.getRegPC())) {
+                handleStop();
+                return;
+            }
+
             if (proc.getRegPC() == stepOverPC1) {
-                updateDebuggerState();
+                handleStop();
                 return;
             }
 
@@ -256,7 +268,14 @@ public class Application {
             if (stepOverPC1 == -1) {
                 return;
             }
+
             proc.execute();
+
+            if (viewer.isBreakpoint(proc.getRegPC())) {
+                handleStop();
+                return;
+            }
+
             display.asyncExec(this);
         }
     };
@@ -2540,8 +2559,6 @@ public class Application {
                                 return opcode;
                             }
 
-                            handleStop();
-
                             return opcode;
                         }
 
@@ -2736,7 +2753,6 @@ public class Application {
         if (lineEntry != null) {
             int address = lineEntry.address;
             viewer.toggleBreakpoint(address);
-            proc.setBreakpoint(address, viewer.isBreakpoint(address));
         }
     }
 
