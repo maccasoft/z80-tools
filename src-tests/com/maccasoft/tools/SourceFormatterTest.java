@@ -99,6 +99,18 @@ public class SourceFormatterTest {
         assertEquals("TEST ld hl, TEST\r\n", formatter.format());
     }
 
+    @Test
+    public void testKeepStringLiteralDelimiters() throws Exception {
+        StringBuilder builder = new StringBuilder();
+        builder.append("test1 db 'string'").append("\n");
+        builder.append("test2 db \"string\"").append("\n");
+        SourceBuilder sourceBuilder = new SourceBuilder(new ArrayList<File>());
+        Source source = sourceBuilder.parse(new StringReader(builder.toString()), null);
+
+        SourceFormatter formatter = new SourceFormatter(source);
+        assertEquals("test1 db 'string'\r\ntest2 db \"string\"\r\n", formatter.format());
+    }
+
     public String format(String... sourceLines) {
         StringBuilder builder = new StringBuilder();
         for (String lineText : sourceLines) {

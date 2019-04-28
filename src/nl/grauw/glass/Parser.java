@@ -288,7 +288,7 @@ public class Parser {
         @Override
         public State parse(char character) {
             if (character == '"') {
-                expressionBuilder.addValueToken(new StringLiteral(accumulator.toString()));
+                expressionBuilder.addValueToken(new StringLiteral(character, accumulator.toString()));
                 accumulator.setLength(0);
                 return argumentOperatorState;
             }
@@ -367,7 +367,7 @@ public class Parser {
                     expressionBuilder.addValueToken(new CharacterLiteral(accumulator.charAt(0)));
                 }
                 else {
-                    expressionBuilder.addValueToken(new StringLiteral(accumulator.toString()));
+                    expressionBuilder.addValueToken(new StringLiteral(character, accumulator.toString()));
                 }
                 accumulator.setLength(0);
                 return argumentOperatorState;

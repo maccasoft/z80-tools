@@ -4,9 +4,11 @@ import java.util.List;
 
 public class StringLiteral extends Literal {
 
+    private final char delimiter;
     private final String string;
 
-    public StringLiteral(String string) {
+    public StringLiteral(char delimiter, String string) {
+        this.delimiter = delimiter;
         this.string = string;
     }
 
@@ -49,7 +51,12 @@ public class StringLiteral extends Literal {
     public String toString() {
         String escaped = string;
         escaped = escaped.replace("\\", "\\\\");
-        escaped = escaped.replace("\"", "\\\"");
+        if (delimiter == '"') {
+            escaped = escaped.replace("\"", "\\\"");
+        }
+        else if (delimiter == '\'') {
+            escaped = escaped.replace("'", "\\'");
+        }
         escaped = escaped.replace("\0", "\\0");
         escaped = escaped.replace("\7", "\\a");
         escaped = escaped.replace("\t", "\\t");
@@ -57,7 +64,7 @@ public class StringLiteral extends Literal {
         escaped = escaped.replace("\f", "\\f");
         escaped = escaped.replace("\r", "\\r");
         escaped = escaped.replace("\33", "\\e");
-        return "\"" + escaped + "\"";
+        return delimiter + escaped + delimiter;
     }
 
     @Override
