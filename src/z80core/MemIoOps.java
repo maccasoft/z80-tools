@@ -13,7 +13,8 @@ public class MemIoOps {
 
     private byte[] z80Ram;
     private byte[] z80Ports;
-    private long tstates = 0;
+
+    protected long tstates = 0;
 
     public MemIoOps() {
 

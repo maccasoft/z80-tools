@@ -55,7 +55,6 @@ public class Machine extends MemIoOps {
     Z80 proc;
     Thread thread;
     double clockNs;
-    long tstates;
 
     public Machine() {
         rom = new byte[16384];
@@ -108,16 +107,18 @@ public class Machine extends MemIoOps {
 
         while (!Thread.interrupted()) {
             synchronized (proc) {
-                long current = System.nanoTime();
-                long tstates = getTstates() + (long) ((current - ns) / clockNs);
-                while (getTstates() < tstates) {
-                    proc.execute();
+                int runTstates = (int) ((System.nanoTime() - ns) / clockNs);
+                if (runTstates >= 4) {
+                    long prevTstates = tstates;
+                    while (tstates < (prevTstates + runTstates)) {
+                        proc.execute();
+                    }
+                    ns += (tstates - prevTstates) * clockNs;
                 }
-                ns = current;
             }
 
             try {
-                Thread.sleep(1);
+                Thread.sleep(1L);
             } catch (InterruptedException e) {
                 break;
             }
