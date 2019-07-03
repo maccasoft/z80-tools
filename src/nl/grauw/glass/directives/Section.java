@@ -21,4 +21,8 @@ public class Section extends Directive {
         super.register(scope, line);
     }
 
+    public Source getSource() {
+        return source;
+    }
+
 }

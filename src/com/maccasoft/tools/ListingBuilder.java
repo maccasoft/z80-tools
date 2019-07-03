@@ -15,6 +15,7 @@ import nl.grauw.glass.Line;
 import nl.grauw.glass.Scope;
 import nl.grauw.glass.Source;
 import nl.grauw.glass.directives.If;
+import nl.grauw.glass.directives.Section;
 
 public class ListingBuilder {
 
@@ -106,6 +107,16 @@ public class ListingBuilder {
                         if (ins.getElseSource() != null) {
                             build(ins.getElseSource());
                         }
+                    }
+                }
+                else if (line.getDirective() instanceof Section) {
+                    if (line.getInstructionObject() != null) {
+                        nl.grauw.glass.instructions.Section ins = (nl.grauw.glass.instructions.Section) line.getInstruction();
+                        build(ins.getSource());
+                    }
+                    else {
+                        Section ins = (Section) line.getDirective();
+                        build(ins.getSource());
                     }
                 }
             } catch (AssemblyException e) {
