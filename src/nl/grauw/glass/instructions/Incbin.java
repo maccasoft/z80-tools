@@ -85,7 +85,7 @@ public class Incbin extends InstructionFactory {
 
         private byte[] loadFile() {
             for (File basePath : basePaths) {
-                File fullPath = new File(basePath.getParent(), path.getString());
+                File fullPath = new File(basePath, path.getString());
                 if (fullPath.exists()) {
                     try {
                         return Files.readAllBytes(fullPath.toPath());

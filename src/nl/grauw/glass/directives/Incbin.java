@@ -18,7 +18,7 @@ public class Incbin extends Directive {
 
     @Override
     public void register(Scope scope, Line line) {
-        line.setInstruction(new nl.grauw.glass.instructions.Incbin(sourceFile, includePaths));
+        line.setInstruction(new nl.grauw.glass.instructions.Incbin(sourceFile.getParentFile(), includePaths));
         super.register(scope, line);
     }
 
