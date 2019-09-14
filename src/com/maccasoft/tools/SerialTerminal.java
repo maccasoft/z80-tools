@@ -564,8 +564,8 @@ public class SerialTerminal {
                 SerialPort.DATABITS_8,
                 SerialPort.STOPBITS_1,
                 SerialPort.PARITY_NONE,
-                false,
-                false);
+                true,
+                true);
             if (flowControl) {
                 serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_RTSCTS_IN | SerialPort.FLOWCONTROL_RTSCTS_OUT);
             }
