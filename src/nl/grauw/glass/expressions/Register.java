@@ -144,15 +144,19 @@ public class Register extends Literal {
                 return Register.A;
             case "ixh":
             case "IXH":
+            case "IXh":
                 return Register.IXH;
             case "ixl":
             case "IXL":
+            case "IXl":
                 return Register.IXL;
             case "iyh":
             case "IYH":
+            case "IYh":
                 return Register.IYH;
             case "iyl":
             case "IYL":
+            case "IYl":
                 return Register.IYL;
             case "bc":
             case "BC":
