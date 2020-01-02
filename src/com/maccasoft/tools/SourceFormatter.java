@@ -17,6 +17,8 @@ import nl.grauw.glass.AssemblyException;
 import nl.grauw.glass.Line;
 import nl.grauw.glass.Source;
 import nl.grauw.glass.directives.If;
+import nl.grauw.glass.directives.Proc;
+import nl.grauw.glass.directives.Section;
 import nl.grauw.glass.expressions.Annotation;
 import nl.grauw.glass.expressions.BinaryOperator;
 import nl.grauw.glass.expressions.Expression;
@@ -233,10 +235,39 @@ public class SourceFormatter {
                 sb.append("\r\n");
 
                 if (line.getDirective() instanceof If) {
-                    If ins = (If) line.getDirective();
-                    format(ins.getThenSource());
-                    if (ins.getElseSource() != null) {
-                        format(ins.getElseSource());
+                    if (line.getInstructionObject() != null) {
+                        nl.grauw.glass.instructions.If ins = (nl.grauw.glass.instructions.If) line.getInstruction();
+                        format(ins.getThenSource());
+                        if (ins.getElseSource() != null) {
+                            format(ins.getElseSource());
+                        }
+                    }
+                    else {
+                        If ins = (If) line.getDirective();
+                        format(ins.getThenSource());
+                        if (ins.getElseSource() != null) {
+                            format(ins.getElseSource());
+                        }
+                    }
+                }
+                else if (line.getDirective() instanceof Section) {
+                    if (line.getInstructionObject() != null) {
+                        nl.grauw.glass.instructions.Section ins = (nl.grauw.glass.instructions.Section) line.getInstruction();
+                        format(ins.getSource());
+                    }
+                    else {
+                        Section ins = (Section) line.getDirective();
+                        format(ins.getSource());
+                    }
+                }
+                else if (line.getDirective() instanceof Proc) {
+                    if (line.getInstructionObject() != null) {
+                        nl.grauw.glass.instructions.Proc ins = (nl.grauw.glass.instructions.Proc) line.getInstruction();
+                        format(ins.getSource());
+                    }
+                    else {
+                        Proc ins = (Proc) line.getDirective();
+                        format(ins.getSource());
                     }
                 }
             } catch (AssemblyException e) {

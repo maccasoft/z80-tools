@@ -111,6 +111,58 @@ public class SourceFormatterTest {
         assertEquals("test1 db 'string'\r\ntest2 db \"string\"\r\n", formatter.format());
     }
 
+    @Test
+    public void testFormatIfSections() {
+        mnemonicColumn = 16;
+        argumentColumn = mnemonicColumn + 6;
+        commentColumn = mnemonicColumn + 16;
+
+        String text = "" +
+            "start .if   1\n" +
+            " di\n" +
+            " .else\n" +
+            " xor a\n" +
+            " .endif\n" +
+            " ret\n";
+        String expected = "" +
+            "start           .if   1\r\n" +
+            "                di\r\n" +
+            "                .else\r\n" +
+            "                xor   a\r\n" +
+            "                .endif\r\n" +
+            "                ret\r\n" +
+            "\r\n";
+        assertEquals(expected, format(text));
+    }
+
+    @Test
+    public void testFormatProcSections() {
+        mnemonicColumn = 16;
+        argumentColumn = mnemonicColumn + 6;
+        commentColumn = mnemonicColumn + 16;
+
+        String text = "" +
+            "start di\n" +
+            " call clear\n" +
+            " ret\n" +
+            "\n" +
+            "clear proc\n" +
+            " xor a\n" +
+            " ret\n" +
+            " endp\n";
+        String expected = "" +
+            "start           di\r\n" +
+            "                call  clear\r\n" +
+            "                ret\r\n" +
+            "\r\n" +
+            "clear           proc\r\n" +
+            "                xor   a\r\n" +
+            "                ret\r\n" +
+            "                endp\r\n" +
+            "\r\n";
+        assertEquals(expected, format(text));
+    }
+
     public String format(String... sourceLines) {
         StringBuilder builder = new StringBuilder();
         for (String lineText : sourceLines) {

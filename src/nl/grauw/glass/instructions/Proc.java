@@ -41,4 +41,8 @@ public class Proc extends InstructionFactory {
         return new Empty.EmptyObject(context);
     }
 
+    public Source getSource() {
+        return source;
+    }
+
 }

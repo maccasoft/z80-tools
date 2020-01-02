@@ -18,4 +18,8 @@ public class Proc extends Directive {
         super.register(scope, line);
     }
 
+    public Source getSource() {
+        return source;
+    }
+
 }
