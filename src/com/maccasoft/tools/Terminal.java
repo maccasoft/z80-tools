@@ -259,26 +259,32 @@ public class Terminal {
         switch (e.keyCode) {
             case SWT.ARROW_UP:
                 writeByte((byte) 0x1B);
+                writeByte((byte) '[');
                 writeByte((byte) 'A');
                 break;
             case SWT.ARROW_DOWN:
                 writeByte((byte) 0x1B);
+                writeByte((byte) '[');
                 writeByte((byte) 'B');
                 break;
             case SWT.ARROW_LEFT:
                 writeByte((byte) 0x1B);
+                writeByte((byte) '[');
                 writeByte((byte) 'D');
                 break;
             case SWT.ARROW_RIGHT:
                 writeByte((byte) 0x1B);
+                writeByte((byte) '[');
                 writeByte((byte) 'C');
                 break;
             case SWT.HOME:
                 writeByte((byte) 0x1B);
+                writeByte((byte) '[');
                 writeByte((byte) 'H');
                 break;
             case SWT.END:
                 writeByte((byte) 0x1B);
+                writeByte((byte) '[');
                 writeByte((byte) 'K');
                 break;
             case SWT.F1:
