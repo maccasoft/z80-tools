@@ -10,6 +10,8 @@
 
 package com.maccasoft.tools;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
 import org.eclipse.swt.dnd.TextTransfer;
@@ -92,12 +94,15 @@ public class Terminal {
 
         @Override
         public void run() {
+            pendingRunnable.set(null);
             if (canvas.isDisposed() || bounds == null) {
                 return;
             }
             canvas.redraw();
         }
     };
+
+    final AtomicReference<Runnable> pendingRunnable = new AtomicReference<Runnable>();
 
     Terminal() {
         // For JUnit tests
@@ -422,7 +427,9 @@ public class Terminal {
                 } finally {
                     gc.dispose();
                 }
-                display.timerExec(REDRAW_MS, redrawRunnable);
+                if (pendingRunnable.compareAndSet(null, redrawRunnable)) {
+                    display.timerExec(REDRAW_MS, redrawRunnable);
+                }
             }
         });
     }
@@ -705,7 +712,9 @@ public class Terminal {
                 } finally {
                     gc.dispose();
                 }
-                display.timerExec(REDRAW_MS, redrawRunnable);
+                if (pendingRunnable.compareAndSet(null, redrawRunnable)) {
+                    display.timerExec(REDRAW_MS, redrawRunnable);
+                }
             }
         });
     }
@@ -723,7 +732,9 @@ public class Terminal {
                 } finally {
                     gc.dispose();
                 }
-                display.timerExec(REDRAW_MS, redrawRunnable);
+                if (pendingRunnable.compareAndSet(null, redrawRunnable)) {
+                    display.timerExec(REDRAW_MS, redrawRunnable);
+                }
             }
         });
     }
