@@ -39,6 +39,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
@@ -221,6 +222,22 @@ public class Emulator {
         MenuItem item = new MenuItem(parent, SWT.CASCADE);
         item.setText("&File");
         item.setMenu(menu);
+
+        item = new MenuItem(menu, SWT.CASCADE);
+        item.setText("Packed CP/M Binary Upload...");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleUploadPackedBinary();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
 
         item = new MenuItem(menu, SWT.PUSH);
         item.setText("Close");
@@ -455,6 +472,116 @@ public class Emulator {
         }
 
         return null;
+    }
+
+    private void handleUploadPackedBinary() {
+        String s = preferences.getDownloadCommand();
+        final File[] fileName = getFileToOpen("Packed-Binary Upload", s != null && !s.equals(""));
+        if (fileName == null || fileName.length == 0) {
+            return;
+        }
+
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    for (int i = 0; i < fileName.length; i++) {
+                        InputStream is = new FileInputStream(fileName[i]);
+                        try {
+                            uploadPackedBinary(fileName[i].getName().toUpperCase(), is);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        is.close();
+
+                        if ((i + 1) < fileName.length) {
+                            try {
+                                Thread.sleep(2000);
+                            } catch (Exception e) {
+                                // Do nothing
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }).start();
+    }
+
+    String filterPath;
+
+    private File[] getFileToOpen(String text, boolean multi) {
+        int style = SWT.OPEN;
+        if (multi) {
+            style |= SWT.MULTI;
+        }
+
+        FileDialog dlg = new FileDialog(shell, style);
+        dlg.setText(text);
+        dlg.setFilterNames(new String[] {
+            "All Files",
+            "CP/M Programs"
+        });
+        dlg.setFilterExtensions(new String[] {
+            "*",
+            "*.COM;*.com"
+        });
+        dlg.setFilterIndex(0);
+        dlg.setFilterPath(filterPath);
+
+        if (dlg.open() == null) {
+            return null;
+        }
+
+        String[] names = dlg.getFileNames();
+
+        File[] files = new File[names.length];
+        for (int i = 0; i < names.length; i++) {
+            files[i] = new File(dlg.getFilterPath(), names[i]);
+        }
+
+        if (names.length != 0) {
+            filterPath = dlg.getFilterPath();
+        }
+
+        return files;
+    }
+
+    public void uploadPackedBinary(String name, InputStream is) throws Exception {
+        int data;
+        int length = is.available();
+        int checksum = 0;
+
+        String cmd = preferences.getDownloadCommand();
+        if (cmd != null && !cmd.equals("")) {
+            cmd = cmd.replace("{0}", name.toUpperCase());
+            writeString(cmd + "\r");
+        }
+
+        writeString("U0\r");
+        writeString(":");
+
+        for (int i = 0; i < length; i++) {
+            data = is.read();
+            writeString(String.format("%02X", data & 0xFF));
+
+            checksum += data & 0xFF;
+        }
+
+        writeString(">");
+
+        writeString(String.format("%02X", length & 0xFF));
+        writeString(String.format("%02X", checksum & 0xFF));
+    }
+
+    void writeString(String s) throws IOException {
+        while (is.available() >= 16) {
+            Thread.yield();
+        }
+        os.write(s.getBytes());
     }
 
     public Shell getShell() {
