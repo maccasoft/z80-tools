@@ -587,6 +587,20 @@ public class Terminal {
                     font.setBackground(paletteData.colors[background]);
                     break;
                 }
+                case 'n':
+                    if (args[0] == 5) {
+                        writeByte((byte) 0x1B);
+                        writeByte((byte) '[');
+                        writeByte((byte) '0');
+                        writeByte((byte) 'n');
+                    }
+                    else if (args[0] == 6) {
+                        byte[] b = String.format("%c[%d;%dR", 0x1B, cy, cx).getBytes();
+                        for (int i = 0; i < b.length; i++) {
+                            writeByte(b[i]);
+                        }
+                    }
+                    break;
                 case 's':
                     savedCx = cx;
                     savedCy = cy;
