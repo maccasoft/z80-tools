@@ -106,7 +106,7 @@ import z80core.Z80;
 public class Application {
 
     public static final String APP_TITLE = "Z80 Tools";
-    public static final String APP_VERSION = "1.1.0";
+    public static final String APP_VERSION = "1.2.0";
 
     Display display;
     Shell shell;
