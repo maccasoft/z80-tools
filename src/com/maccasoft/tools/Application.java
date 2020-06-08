@@ -131,6 +131,9 @@ public class Application {
     DebugTerminal debugTerminal;
     Emulator emulator;
 
+    TMS9918 tms9918;
+    DebugTMS9918 debugTMS9918;
+
     Z80 proc;
     MemIoOps memIoOps;
     SourceMap sourceMap;
@@ -358,6 +361,10 @@ public class Application {
                 if (debugTerminal != null) {
                     debugTerminal.dispose();
                     debugTerminal = null;
+                }
+                if (debugTMS9918 != null) {
+                    debugTMS9918.dispose();
+                    debugTMS9918 = null;
                 }
                 try {
                     preferences.removePropertyChangeListener(preferencesChangeListner);
@@ -1103,6 +1110,36 @@ public class Application {
             public void handleEvent(Event e) {
                 try {
                     handleClearBreakpoints();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Open terminal window");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleOpenDebugTerminal();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Open TMS9918 window");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleOpenTMS9918Window();
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -2398,6 +2435,12 @@ public class Application {
                         return;
                     }
 
+                    tms9918 = new TMS9918();
+                    if (debugTMS9918 != null) {
+                        debugTMS9918.setTMS9918(tms9918);
+                        debugTMS9918.redraw();
+                    }
+
                     memIoOps = new MemIoOps(65536, 256) {
 
                         public final static int SIOA_D = 0x81;
@@ -2413,7 +2456,6 @@ public class Application {
 
                         @Override
                         public int inPort(int port) {
-                            int result = super.inPort(port & 0xFF);
                             switch (port & 0xFF) {
                                 case SIOA_C: {
                                     try {
@@ -2438,7 +2480,15 @@ public class Application {
                                 case SIOB_C:
                                     return 0x04; // Always return TX buffer empty
                             }
-                            return result;
+
+                            if ((port & 0xFF) == preferences.getTms9918Ram()) {
+                                return tms9918.inRam();
+                            }
+                            if ((port & 0xFF) == preferences.getTms9918Register()) {
+                                return tms9918.inReg();
+                            }
+
+                            return super.inPort(port & 0xFF);
                         }
 
                         @Override
@@ -2455,6 +2505,12 @@ public class Application {
                                 case SIOB_D:
                                     out.write(value);
                                     break;
+                            }
+                            if ((port & 0xFF) == preferences.getTms9918Ram()) {
+                                tms9918.outRam(value);
+                            }
+                            if ((port & 0xFF) == preferences.getTms9918Register()) {
+                                tms9918.outReg(value);
                             }
                             super.outPort(port & 0xFF, value);
                         }
@@ -2647,6 +2703,8 @@ public class Application {
             }
         }
 
+        tms9918.reset();
+
         memIoOps.reset();
         memory.clearUpdates();
         viewer.getControl().setFocus();
@@ -2774,6 +2832,11 @@ public class Application {
         memory.update();
         registers.updateRegisters(proc);
 
+        tms9918.redrawFrame();
+        if (debugTMS9918 != null) {
+            debugTMS9918.redraw();
+        }
+
         LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
         if (lineEntry != null) {
             viewer.gotToLineColumn(lineEntry.lineNumber, 0);
@@ -2793,6 +2856,22 @@ public class Application {
             });
         }
         debugTerminal.setFocus();
+    }
+
+    private void handleOpenTMS9918Window() {
+        if (debugTMS9918 == null) {
+            debugTMS9918 = new DebugTMS9918();
+            debugTMS9918.setTMS9918(tms9918);
+            debugTMS9918.open();
+            debugTMS9918.getShell().addDisposeListener(new DisposeListener() {
+
+                @Override
+                public void widgetDisposed(DisposeEvent e) {
+                    debugTMS9918 = null;
+                }
+            });
+        }
+        debugTMS9918.setFocus();
     }
 
     private void handleCompileAndCopyIntelHexToClipboard() throws Exception {

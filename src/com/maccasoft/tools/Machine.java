@@ -54,15 +54,32 @@ public class Machine extends MemIoOps {
 
     Z80 proc;
     Thread thread;
-    double clockNs;
+    long clockPeriodNs;
+    long clockTimeNs;
+
+    int tmsRam;
+    int tmsReg;
+    TMS9918 tms9918;
 
     public Machine() {
         rom = new byte[16384];
         ram = new byte[65536];
 
-        clockNs = 1000.0 / 7.3728;
+        clockPeriodNs = (long) (1000.0 / 7.3728);
+        clockTimeNs = 0;
 
         proc = new Z80(this, null);
+
+        tms9918 = new TMS9918() {
+
+            @Override
+            protected void onVSync() {
+                Machine.this.onTMS9918VSync();
+            }
+
+        };
+        tmsRam = 0x40;
+        tmsReg = 0x41;
 
         thread = new Thread(new Runnable() {
 
@@ -84,7 +101,7 @@ public class Machine extends MemIoOps {
     }
 
     public void setClock(double freq) {
-        clockNs = 1000.0 / freq;
+        clockPeriodNs = (long) (1000.0 / freq);
     }
 
     public void setCompactFlash(File file) {
@@ -107,13 +124,17 @@ public class Machine extends MemIoOps {
 
         while (!Thread.interrupted()) {
             synchronized (proc) {
-                int runTstates = (int) ((System.nanoTime() - ns) / clockNs);
+                int runTstates = (int) ((System.nanoTime() - ns) / clockPeriodNs);
                 if (runTstates >= 4) {
                     long prevTstates = tstates;
+                    long prevClockTime = clockTimeNs;
                     while (tstates < (prevTstates + runTstates)) {
                         proc.execute();
                     }
-                    ns += (tstates - prevTstates) * clockNs;
+                    long elapsed = clockTimeNs - prevClockTime;
+                    tms9918.processFrame(elapsed);
+                    onElapsedTime(elapsed);
+                    ns += elapsed;
                 }
             }
 
@@ -125,11 +146,19 @@ public class Machine extends MemIoOps {
         }
     }
 
+    protected void onElapsedTime(long elapsedNs) {
+        // Do nothing
+    }
+
     @Override
     public void reset() {
         synchronized (proc) {
             page = false;
             tstates = 0;
+            clockTimeNs = 0;
+            if (tms9918 != null) {
+                tms9918.reset();
+            }
             proc.reset();
             super.reset();
         }
@@ -138,6 +167,7 @@ public class Machine extends MemIoOps {
     @Override
     public int fetchOpcode(int address) {
         tstates += 4; // 3 clocks to fetch opcode from RAM and 1 execution clock
+        clockTimeNs += clockPeriodNs * 4;
         if (!page && address < rom.length) {
             return rom[address & 0xFFFF] & 0xff;
         }
@@ -147,6 +177,14 @@ public class Machine extends MemIoOps {
     @Override
     public int inPort(int port) {
         tstates += 4; // 4 clocks for read byte from bus
+        clockTimeNs += clockPeriodNs * 4;
+
+        if ((port & 0xFF) == tmsRam) {
+            return tms9918.inRam();
+        }
+        if ((port & 0xFF) == tmsReg) {
+            return tms9918.inReg();
+        }
 
         switch (port & 0xFF) {
             case CF_DATA:
@@ -168,12 +206,20 @@ public class Machine extends MemIoOps {
                 return 0x04; // Always return TX buffer empty
         }
 
-        return 0;
+        return port;
     }
 
     @Override
     public void outPort(int port, int value) {
         tstates += 4; // 4 clocks for write byte to bus
+        clockTimeNs += clockPeriodNs * 4;
+
+        if ((port & 0xFF) == tmsRam) {
+            tms9918.outRam(value);
+        }
+        if ((port & 0xFF) == tmsReg) {
+            tms9918.outReg(value);
+        }
 
         switch (port & 0xFF) {
             case CF_DATA:
@@ -222,6 +268,7 @@ public class Machine extends MemIoOps {
     @Override
     public int peek8(int address) {
         tstates += 3; // 3 clocks for read byte from RAM
+        clockTimeNs += clockPeriodNs * 3;
         if (!page && address < rom.length) {
             return rom[address & 0xFFFF] & 0xff;
         }
@@ -231,6 +278,7 @@ public class Machine extends MemIoOps {
     @Override
     public void poke8(int address, int value) {
         tstates += 3; // 3 clocks for write byte to RAM
+        clockTimeNs += clockPeriodNs * 3;
         if (page || address >= rom.length) {
             ram[address & 0xFFFF] = (byte) value;
         }
@@ -254,6 +302,10 @@ public class Machine extends MemIoOps {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    protected void onTMS9918VSync() {
+        // Do nothing
     }
 
 }

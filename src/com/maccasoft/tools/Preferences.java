@@ -94,6 +94,9 @@ public class Preferences {
     String romImage2;
     int romAddress2;
     String compactFlashImage;
+    boolean openTMS9918Window;
+    int tms9918Ram;
+    int tms9918Register;
 
     int lastUploadType;
     String lastPath;
@@ -119,6 +122,9 @@ public class Preferences {
         serialBaud = 115200;
         downloadCommand = "A:DOWNLOAD {0}";
         xmodemCommand = "A:XMODEM {0} /R /X0 /Q";
+
+        tms9918Ram = 0x98;
+        tms9918Register = 0x99;
 
         lru = new ArrayList<String>();
     }
@@ -412,6 +418,30 @@ public class Preferences {
 
     public void setCompactFlashImage(String compactFlashImage) {
         this.compactFlashImage = compactFlashImage;
+    }
+
+    public boolean isOpenTMS9918Window() {
+        return openTMS9918Window;
+    }
+
+    public void setOpenTMS9918Window(boolean openTMS9918Window) {
+        this.openTMS9918Window = openTMS9918Window;
+    }
+
+    public int getTms9918Ram() {
+        return tms9918Ram;
+    }
+
+    public void setTms9918Ram(int tms9918Data) {
+        this.tms9918Ram = tms9918Data;
+    }
+
+    public int getTms9918Register() {
+        return tms9918Register;
+    }
+
+    public void setTms9918Register(int tms9918Control) {
+        this.tms9918Register = tms9918Control;
     }
 
     public void save() throws IOException {

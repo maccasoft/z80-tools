@@ -85,6 +85,9 @@ public class PreferencesDialog extends Dialog {
     Text romImage2;
     Text romAddress2;
     Text compactFlashImage;
+    Button openTMS9918Window;
+    Text tms9918VRam;
+    Text tms9918Register;
 
     Preferences preferences;
     String defaultFont;
@@ -775,6 +778,23 @@ public class PreferencesDialog extends Dialog {
                 }
             }
         });
+
+        new Label(composite, SWT.NONE);
+        openTMS9918Window = new Button(composite, SWT.CHECK);
+        openTMS9918Window.setText("Open TMS9918 Window");
+        openTMS9918Window.setSelection(preferences.isOpenTMS9918Window());
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("TMS9918 VRam Port");
+        tms9918VRam = new Text(composite, SWT.BORDER);
+        tms9918VRam.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        tms9918VRam.setText(String.format("%02X", preferences.getTms9918Ram()));
+
+        label = new Label(composite, SWT.NONE);
+        label.setText("TMS9918 Register Port");
+        tms9918Register = new Text(composite, SWT.BORDER);
+        tms9918Register.setLayoutData(new GridData(convertWidthInCharsToPixels(3), SWT.DEFAULT));
+        tms9918Register.setText(String.format("%02X", preferences.getTms9918Register()));
     }
 
     void addSeparator(Composite parent) {
@@ -835,6 +855,9 @@ public class PreferencesDialog extends Dialog {
         preferences.setRomAddress2(Integer.valueOf(romAddress2.getText(), 16));
         preferences.setRomImage2(romImage2.getText());
         preferences.setCompactFlashImage(compactFlashImage.getText());
+        preferences.setOpenTMS9918Window(openTMS9918Window.getSelection());
+        preferences.setTms9918Ram(Integer.valueOf(tms9918VRam.getText(), 16));
+        preferences.setTms9918Register(Integer.valueOf(tms9918Register.getText(), 16));
 
         super.okPressed();
     }

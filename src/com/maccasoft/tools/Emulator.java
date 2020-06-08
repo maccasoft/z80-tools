@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-19 Marco Maccaferri and others.
+ * Copyright (c) 2018-20 Marco Maccaferri and others.
  * All rights reserved.
  *
  * This program and the accompanying materials are made available under
@@ -29,6 +29,7 @@ import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
@@ -59,6 +60,9 @@ public class Emulator {
     Composite container;
     Terminal term;
 
+    Shell tms9918Shell;
+    TMS9918Terminal tms9918term;
+
     Combo cursorKeys;
 
     PipedOutputStream os;
@@ -72,51 +76,7 @@ public class Emulator {
     }
 
     public void open() {
-        display = Display.getDefault();
         preferences = Preferences.getInstance();
-
-        shell = new Shell(display);
-        shell.setText(Application.APP_TITLE);
-        shell.setData(this);
-
-        Image[] images = new Image[] {
-            ImageRegistry.getImageFromResources("app128.png"),
-            ImageRegistry.getImageFromResources("app64.png"),
-            ImageRegistry.getImageFromResources("app48.png"),
-            ImageRegistry.getImageFromResources("app32.png"),
-            ImageRegistry.getImageFromResources("app16.png"),
-        };
-        shell.setImages(images);
-
-        Menu menu = new Menu(shell, SWT.BAR);
-        createFileMenu(menu);
-        createEditMenu(menu);
-        createHelpMenu(menu);
-        shell.setMenuBar(menu);
-
-        GridLayout layout = new GridLayout(1, false);
-        layout.marginWidth = layout.marginHeight = 0;
-        shell.setLayout(layout);
-
-        Control control = createContents(shell);
-        control.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        Rectangle screen = display.getClientArea();
-
-        Point size = control.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
-
-        Rectangle rect = shell.computeTrim(0, 0, size.x, size.y);
-        rect.x = (screen.width - rect.width) / 2;
-        rect.y = (screen.height - rect.height) / 2;
-        if (rect.y < 0) {
-            rect.height += rect.y * 2;
-            rect.y = 0;
-        }
-
-        shell.setLocation(rect.x, rect.y);
-        shell.setSize(rect.width, rect.height);
-
-        shell.open();
 
         machine = new Machine() {
 
@@ -205,15 +165,110 @@ public class Emulator {
                 super.outPort(port, value);
             }
 
+            @Override
+            protected void onTMS9918VSync() {
+                if (tms9918term != null) {
+                    tms9918term.redraw();
+                }
+                super.onTMS9918VSync();
+            }
+
         };
+
+        machine.tmsRam = preferences.getTms9918Ram();
+        machine.tmsReg = preferences.getTms9918Register();
 
         String s = preferences.getCompactFlashImage();
         if (s != null && !"".equals(s)) {
             machine.setCompactFlash(new File(s));
         }
 
+        createTerminalShell();
+
+        if (preferences.isOpenTMS9918Window()) {
+            tms9918Shell = createTMS9918Shell();
+
+            Rectangle screen = display.getClientArea();
+
+            Rectangle rect = new Rectangle(0, 0, shell.getSize().x + 5 + tms9918Shell.getSize().x, shell.getSize().y);
+            rect.x = (screen.width - rect.width) / 2;
+            if (rect.x < 0) {
+                rect.x = 0;
+            }
+            rect.y = (screen.height - rect.height) / 2;
+            if (rect.y < 0) {
+                rect.height += rect.y * 2;
+                rect.y = 0;
+            }
+
+            shell.setLocation(rect.x, rect.y);
+            tms9918Shell.setLocation(rect.x + shell.getSize().x + 5, rect.y);
+
+            tms9918Shell.open();
+        }
+
+        shell.addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                if (tms9918Shell != null) {
+                    tms9918Shell.dispose();
+                }
+                tms9918Shell = null;
+            }
+        });
+        shell.open();
+
         machine.reset();
         machine.start();
+    }
+
+    protected Shell createTerminalShell() {
+        display = Display.getDefault();
+
+        shell = new Shell(display);
+        shell.setText(Application.APP_TITLE);
+        shell.setData(this);
+
+        Image[] images = new Image[] {
+            ImageRegistry.getImageFromResources("app128.png"),
+            ImageRegistry.getImageFromResources("app64.png"),
+            ImageRegistry.getImageFromResources("app48.png"),
+            ImageRegistry.getImageFromResources("app32.png"),
+            ImageRegistry.getImageFromResources("app16.png"),
+        };
+        shell.setImages(images);
+
+        Menu menu = new Menu(shell, SWT.BAR);
+        createFileMenu(menu);
+        createEditMenu(menu);
+        createWindowMenu(menu);
+        createHelpMenu(menu);
+        shell.setMenuBar(menu);
+
+        GridLayout layout = new GridLayout(1, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        shell.setLayout(layout);
+
+        Control control = createContents(shell);
+        control.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        Rectangle screen = display.getClientArea();
+
+        Point size = control.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+
+        Rectangle rect = shell.computeTrim(0, 0, size.x, size.y);
+        rect.x = (screen.width - rect.width) / 2;
+        rect.y = (screen.height - rect.height) / 2;
+        if (rect.y < 0) {
+            rect.height += rect.y * 2;
+            rect.y = 0;
+        }
+
+        shell.setLocation(rect.x, rect.y);
+        shell.setSize(rect.width, rect.height);
+
+        return shell;
     }
 
     void createFileMenu(Menu parent) {
@@ -266,6 +321,28 @@ public class Emulator {
             public void handleEvent(Event e) {
                 try {
                     term.pasteFromClipboard();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+    }
+
+    void createWindowMenu(Menu parent) {
+        Menu menu = new Menu(parent.getParent(), SWT.DROP_DOWN);
+
+        MenuItem item = new MenuItem(parent, SWT.CASCADE);
+        item.setText("&Window");
+        item.setMenu(menu);
+
+        item = new MenuItem(menu, SWT.PUSH);
+        item.setText("Open TMS9918 Window");
+        item.addListener(SWT.Selection, new Listener() {
+
+            @Override
+            public void handleEvent(Event e) {
+                try {
+                    handleOpenTMS9918Window();
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -588,6 +665,85 @@ public class Emulator {
         return shell;
     }
 
+    private void handleOpenTMS9918Window() {
+        if (tms9918term != null) {
+            tms9918term.setFocus();
+            return;
+        }
+
+        tms9918Shell = createTMS9918Shell();
+
+        Rectangle bounds = shell.getBounds();
+        tms9918Shell.setLocation(bounds.x + bounds.width + 5, bounds.y);
+        tms9918Shell.open();
+
+        shell.setFocus();
+    }
+
+    protected Shell createTMS9918Shell() {
+        final Shell shell = new Shell(display);
+        shell.setText("TMS9918");
+
+        Image[] images = new Image[] {
+            ImageRegistry.getImageFromResources("app128.png"),
+            ImageRegistry.getImageFromResources("app64.png"),
+            ImageRegistry.getImageFromResources("app48.png"),
+            ImageRegistry.getImageFromResources("app32.png"),
+            ImageRegistry.getImageFromResources("app16.png"),
+        };
+        shell.setImages(images);
+
+        GridLayout layout = new GridLayout(1, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        shell.setLayout(layout);
+
+        Control control = createTMS9918Contents(shell);
+        control.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        Point size = control.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+        Rectangle rect = shell.computeTrim(0, 0, size.x * 2, size.y * 2);
+
+        Rectangle screen = getShell().getBounds();
+
+        shell.setLocation(screen.x + screen.width + 10, screen.y);
+        shell.setSize(rect.width, rect.height);
+
+        return shell;
+    }
+
+    protected Control createTMS9918Contents(Composite parent) {
+        Composite container = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(1, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        tms9918term = new TMS9918Terminal(container) {
+
+            @Override
+            protected ImageData getImageData() {
+                return machine.tms9918.getImageData();
+            }
+
+        };
+
+        Rectangle rect = tms9918term.getBounds();
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gridData.widthHint = rect.width;
+        gridData.heightHint = rect.height;
+        tms9918term.setLayoutData(gridData);
+
+        container.addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                tms9918term = null;
+            }
+        });
+
+        return container;
+    }
+
     static {
         System.setProperty("SWT_GTK3", "0");
     }
@@ -602,6 +758,8 @@ public class Emulator {
                 try {
                     Emulator emulator = new Emulator();
                     emulator.open();
+
+                    emulator.getShell().setFocus();
 
                     while (display.getShells().length != 0) {
                         if (!display.readAndDispatch()) {

@@ -14,13 +14,13 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 
-import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -33,10 +33,10 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.maccasoft.tools.internal.ImageRegistry;
 
-public class DebugTerminal extends Window {
+public class DebugTerminal {
 
     Display display;
-    Composite container;
+    Shell shell;
     Terminal term;
 
     Combo cursorKeys;
@@ -45,12 +45,15 @@ public class DebugTerminal extends Window {
     PipedInputStream is;
 
     public DebugTerminal() {
-        super((Shell) null);
+
     }
 
-    @Override
-    protected void configureShell(Shell newShell) {
-        super.configureShell(newShell);
+    public void open() {
+        shell = new Shell();
+        shell.setText("Debug Terminal");
+        shell.setData(this);
+
+        display = shell.getDisplay();
 
         Image[] images = new Image[] {
             ImageRegistry.getImageFromResources("app128.png"),
@@ -59,17 +62,33 @@ public class DebugTerminal extends Window {
             ImageRegistry.getImageFromResources("app32.png"),
             ImageRegistry.getImageFromResources("app16.png"),
         };
-        newShell.setImages(images);
-        newShell.setText("Debug Terminal");
+        shell.setImages(images);
 
-        newShell.setData(this);
+        GridLayout layout = new GridLayout(1, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        shell.setLayout(layout);
+
+        Control control = createContents(shell);
+        control.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        Point size = control.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+
+        Rectangle screen = display.getBounds();
+
+        Rectangle rect = shell.computeTrim(0, 0, size.x, size.y);
+        rect.x = (screen.width - rect.width) / 2;
+        rect.y = (screen.height - rect.height) / 2;
+        if (rect.y < 0) {
+            rect.height += rect.y * 2;
+            rect.y = 0;
+        }
+        shell.setBounds(rect);
+
+        shell.open();
     }
 
-    @Override
     protected Control createContents(Composite parent) {
-        display = parent.getDisplay();
-
-        container = new Composite(parent, SWT.NONE);
+        Composite container = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, false);
         layout.marginWidth = layout.marginHeight = 0;
         container.setLayout(layout);
@@ -165,7 +184,11 @@ public class DebugTerminal extends Window {
     }
 
     public void dispose() {
-        getShell().dispose();
+        shell.dispose();
+    }
+
+    public Shell getShell() {
+        return shell;
     }
 
     public void write(int b) {
