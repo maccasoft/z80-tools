@@ -87,7 +87,7 @@ public class Emulator {
                     String s2 = preferences.getRomImage2();
 
                     if ((s1 == null || "".equals(s1)) && (s2 == null || "".equals(s2))) {
-                        InputStream is = Emulator.class.getResourceAsStream("rom.bin");
+                        InputStream is = Emulator.class.getResourceAsStream("ROM.BIN");
                         byte[] rom = new byte[is.available()];
                         is.read(rom);
                         is.close();

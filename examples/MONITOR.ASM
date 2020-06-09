@@ -659,6 +659,7 @@ PROCESSSECTORS
 ; 0 = SIO A, 1 = SIO B
 
                 LD    A, (PRIMARYIO)
+                PUSH  AF
                 LD    HL, (0FFFEH)
                 JP    (HL)
 
