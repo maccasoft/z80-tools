@@ -49,6 +49,7 @@ public class Machine extends MemIoOps {
 
     byte cfCommand;
     byte[] cfLBA = new byte[4];
+    byte cfSecCount;
     File cfFile;
     RandomAccessFile cf;
 
@@ -198,12 +199,15 @@ public class Machine extends MemIoOps {
                     }
                 }
                 break;
+            case CF_SECCOUNT:
+                return cfSecCount & 0xFF;
             case CF_STATUS:
-                return 0x40; // CF ready
-            case SIOA_C:
-                return 0x04; // Always return TX buffer empty
-            case SIOB_C:
-                return 0x04; // Always return TX buffer empty
+                if (cfCommand == CF_WRITE_SEC || cfCommand == CF_READ_SEC) {
+                    return 0x48; // CF Ready, DRQ
+                }
+                else {
+                    return 0x40; // CF Ready
+                }
         }
 
         return port;
@@ -259,8 +263,16 @@ public class Machine extends MemIoOps {
                 cfLBA[3] = (byte) value;
                 break;
             }
+            case CF_SECCOUNT:
+                cfSecCount = (byte) value;
+                break;
             case 0x38: // ROM page
-                page = !page;
+                if ((value & 0xFF) == 0x01) {
+                    page = true;
+                }
+                else {
+                    page = false;
+                }
                 break;
         }
     }

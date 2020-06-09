@@ -132,14 +132,15 @@ public class Emulator {
             public int inPort(int port) {
                 switch (port & 0xFF) {
                     case SIOA_C:
+                        int result = 0b00101100; // TX Buffer Empty, DCD and CTS
                         try {
                             if (is.available() > 0) {
-                                return 0x04 + 0x01;
+                                result |= 0x01; // RX Char Available
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-                        return 0x04; // Always return TX buffer empty
+                        return result;
                     case SIOA_D:
                         try {
                             if (is.available() > 0) {
@@ -148,7 +149,11 @@ public class Emulator {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-                        break;
+                        return 0x00;
+                    case SIOB_C:
+                        return 0b00101100; // TX Buffer Empty, DCD and CTS
+                    case SIOB_D:
+                        return 0x00;
                 }
                 return super.inPort(port);
             }

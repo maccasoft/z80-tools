@@ -2458,14 +2458,15 @@ public class Application {
                         public int inPort(int port) {
                             switch (port & 0xFF) {
                                 case SIOA_C: {
+                                    int result = 0b00101100; // TX Buffer Empty, DCD and CTS
                                     try {
                                         if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
-                                            return 0x04 + 0x01;
+                                            result |= 0x01; // RX Char Available
                                         }
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
-                                    return 0x04; // Always return TX buffer empty
+                                    return result;
                                 }
                                 case SIOA_D: {
                                     try {
@@ -2475,10 +2476,12 @@ public class Application {
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
-                                    break;
+                                    return 0x00;
                                 }
                                 case SIOB_C:
-                                    return 0x04; // Always return TX buffer empty
+                                    return 0b00101100; // TX Buffer Empty, DCD and CTS
+                                case SIOB_D:
+                                    return 0x00;
                             }
 
                             if ((port & 0xFF) == preferences.getTms9918Ram()) {
