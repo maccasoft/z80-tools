@@ -661,6 +661,9 @@ public class Terminal {
             return;
         }
         switch (c) {
+            case 0x07:
+                display.beep();
+                break;
             case 0x08:
                 if (cx >= font.getWidth()) {
                     cx -= font.getWidth();
