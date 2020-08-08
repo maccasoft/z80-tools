@@ -2441,7 +2441,7 @@ public class Application {
                         debugTMS9918.redraw();
                     }
 
-                    memIoOps = new MemIoOps(65536, 256) {
+                    memIoOps = new MemIoOps(65536) {
 
                         public final static int SIOA_D = 0x81;
                         public final static int SIOA_C = 0x80;
@@ -2491,7 +2491,7 @@ public class Application {
                                 return tms9918.inReg();
                             }
 
-                            return super.inPort(port & 0xFF);
+                            return super.inPort(port);
                         }
 
                         @Override
@@ -2515,7 +2515,7 @@ public class Application {
                             if ((port & 0xFF) == preferences.getTms9918Register()) {
                                 tms9918.outReg(value);
                             }
-                            super.outPort(port & 0xFF, value);
+                            super.outPort(port, value);
                         }
 
                     };

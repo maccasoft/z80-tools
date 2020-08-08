@@ -126,13 +126,13 @@ public class TMS9918 {
     public int inRam() {
         int result = ram[ramPtr] & 0xFF;
         ramPtr = (ramPtr + 1) & 0x3FFF;
-        return result;
+        return result & 0xFF;
     }
 
     public int inReg() {
         int result = status;
         status &= ~0x80;
-        return result;
+        return result & 0xFF;
     }
 
     public void processFrame(long elapsedTimeNs) {

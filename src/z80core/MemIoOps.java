@@ -12,7 +12,6 @@ package z80core;
 public class MemIoOps {
 
     private byte[] z80Ram;
-    private byte[] z80Ports;
 
     protected long tstates = 0;
 
@@ -20,21 +19,13 @@ public class MemIoOps {
 
     }
 
-    public MemIoOps(int ramSize, int portSize) {
+    public MemIoOps(int ramSize) {
         if (ramSize < 0 || ramSize > 0x10000) {
             throw new IndexOutOfBoundsException("ramSize Out of Range [0x0000 - 0x10000");
         }
 
         if (ramSize > 0) {
             z80Ram = new byte[ramSize];
-        }
-
-        if (portSize < 0 || portSize > 0x10000) {
-            throw new IndexOutOfBoundsException("portSize Out of Range [0x0000 - 0x10000");
-        }
-
-        if (portSize > 0) {
-            z80Ports = new byte[portSize];
         }
     }
 
@@ -79,12 +70,11 @@ public class MemIoOps {
 
     public int inPort(int port) {
         tstates += 4; // 4 clocks for read byte from bus
-        return z80Ports[port & 0xFFFF] & 0xff;
+        return port & 0xff;
     }
 
     public void outPort(int port, int value) {
         tstates += 4; // 4 clocks for write byte to bus
-        z80Ports[port & 0xFFFF] = (byte) value;
     }
 
     public void addressOnBus(int address, int tstates) {
