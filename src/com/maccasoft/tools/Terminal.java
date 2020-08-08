@@ -417,10 +417,16 @@ public class Terminal {
     }
 
     public void write(int c) {
+        if (display == null || display.isDisposed()) {
+            return;
+        }
         display.syncExec(new Runnable() {
 
             @Override
             public void run() {
+                if (canvas == null || canvas.isDisposed() || image == null || image.isDisposed()) {
+                    return;
+                }
                 GC gc = new GC(image);
                 try {
                     write(gc, c);
@@ -446,8 +452,56 @@ public class Terminal {
             }
         }
         if (state == 1) {
-            state = (c == '[') ? (state + 1) : 0;
-            return;
+            switch (c) {
+                case '[':
+                    state = 2;
+                    return;
+                case 'A':
+                    cy -= font.getHeight();
+                    if (cy < 0) {
+                        cy = 0;
+                    }
+                    state = 0;
+                    return;
+                case 'B':
+                    cy += font.getHeight();
+                    while (cy >= bounds.height) {
+                        cy -= font.getHeight();
+                    }
+                    state = 0;
+                    return;
+                case 'C':
+                    cx += font.getWidth();
+                    while (cx >= bounds.width) {
+                        cx -= font.getWidth();
+                    }
+                    state = 0;
+                    return;
+                case 'D':
+                    cx -= font.getWidth();
+                    if (cx < 0) {
+                        cx = 0;
+                    }
+                    state = 0;
+                    return;
+                default:
+                    if (cx >= bounds.width) {
+                        cx = 0;
+                        cy += font.getHeight();
+                        if (cy >= bounds.height) {
+                            gc.copyArea(0, font.getHeight(), bounds.width, bounds.height - font.getHeight(), 0, 0);
+                            gc.setBackground(colors[background]);
+                            gc.fillRectangle(0, bounds.height - font.getHeight(), bounds.width, font.getHeight());
+                            cy -= font.getHeight();
+                        }
+                    }
+
+                    font.print(gc, c, cx, cy);
+
+                    cx += font.getWidth();
+                    state = 0;
+                    return;
+            }
         }
         if (state == 2) {
             if (c == '?') {
