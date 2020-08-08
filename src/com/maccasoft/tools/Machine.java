@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 
+import com.maccasoft.tools.internal.Utility;
+
 import z80core.MemIoOps;
 import z80core.Z80;
 
@@ -40,8 +42,9 @@ public class Machine extends MemIoOps {
     public final static int CF_LBA2 = 0x15;
     public final static int CF_LBA3 = 0x16;
 
-    public final static int CF_READ_SEC = 0x20;
-    public final static int CF_WRITE_SEC = 0x30;
+    public final static byte CF_READ_SEC = 0x20;
+    public final static byte CF_WRITE_SEC = 0x30;
+    public final static byte CF_IDENTIFY = (byte) 0xEC;
 
     boolean page;
     byte[] rom;
@@ -52,6 +55,8 @@ public class Machine extends MemIoOps {
     byte cfSecCount;
     File cfFile;
     RandomAccessFile cf;
+    byte[] cfIdentifyBuffer = new byte[512];
+    int cfDataCount;
 
     Z80 proc;
     Thread thread;
@@ -111,8 +116,19 @@ public class Machine extends MemIoOps {
 
     public void start() {
         try {
+            System.arraycopy("EM-CF-00000001      ".getBytes(), 0, cfIdentifyBuffer, 20, 20); // Serial number
+            System.arraycopy(Utility.getSwappedBytes("1.00    "), 0, cfIdentifyBuffer, 46, 8); // Firmware version
+            System.arraycopy(Utility.getSwappedBytes("EMULATED CF CARD                        "), 0, cfIdentifyBuffer, 54, 40); // Card model
+
             if (cfFile != null) {
                 cf = new RandomAccessFile(cfFile, "rw");
+
+                long size = cf.length() / 512;
+                cfIdentifyBuffer[14] = (byte) (size >> 16);
+                cfIdentifyBuffer[15] = (byte) (size >> 24);
+                cfIdentifyBuffer[16] = (byte) (size);
+                cfIdentifyBuffer[17] = (byte) (size >> 8);
+
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -190,27 +206,47 @@ public class Machine extends MemIoOps {
         switch (port & 0xFF) {
             case CF_DATA:
                 if (cfCommand == CF_READ_SEC) {
-                    try {
-                        if (cf != null) {
-                            return (byte) cf.read();
+                    if (cfDataCount < 512 * cfSecCount) {
+                        cfDataCount++;
+                        try {
+                            if (cf != null) {
+                                return (byte) cf.read();
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        return 0;
                     }
                 }
-                break;
+                else if (cfCommand == CF_IDENTIFY) {
+                    if (cfDataCount < cfIdentifyBuffer.length) {
+                        return cfIdentifyBuffer[cfDataCount++];
+                    }
+                    return 0;
+                }
+                return 0;
             case CF_SECCOUNT:
                 return cfSecCount & 0xFF;
             case CF_STATUS:
                 if (cfCommand == CF_WRITE_SEC || cfCommand == CF_READ_SEC) {
                     return 0x48; // CF Ready, DRQ
                 }
-                else {
-                    return 0x40; // CF Ready
+                else if (cfCommand == CF_IDENTIFY) {
+                    if (cfDataCount < cfIdentifyBuffer.length) {
+                        return 0x48; // CF Ready, DRQ
+                    }
                 }
+                return 0x40; // CF Ready
+            case CF_ERROR:
+                return 0x01; // No error
+            case CF_SECTOR:
+            case CF_CYL_LOW:
+            case CF_CYL_HI:
+            case CF_HEAD:
+                return 0;
         }
 
-        return port;
+        return 0xFF;
     }
 
     @Override
@@ -228,12 +264,15 @@ public class Machine extends MemIoOps {
         switch (port & 0xFF) {
             case CF_DATA:
                 if (cfCommand == CF_WRITE_SEC) {
-                    try {
-                        if (cf != null) {
-                            cf.write(value & 0xFF);
+                    if (cfDataCount < 512 * cfSecCount) {
+                        cfDataCount++;
+                        try {
+                            if (cf != null) {
+                                cf.write(value & 0xFF);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
                     }
                 }
                 break;
@@ -248,6 +287,10 @@ public class Machine extends MemIoOps {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+                    cfDataCount = 0;
+                }
+                else if (cfCommand == CF_IDENTIFY) {
+                    cfDataCount = 0;
                 }
                 break;
             case CF_LBA0:

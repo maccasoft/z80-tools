@@ -10,5 +10,6 @@
 <mapEntry key="UBUNTU_MENUPROXY" value="0"/>
 </mapAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="com.maccasoft.tools.Application"/>
+<stringAttribute key="org.eclipse.jdt.launching.MODULE_NAME" value="z80-tools"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="z80-tools"/>
 </launchConfiguration>
