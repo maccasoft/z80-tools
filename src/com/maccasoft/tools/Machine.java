@@ -46,7 +46,7 @@ public class Machine extends MemIoOps {
     public final static byte CF_WRITE_SEC = 0x30;
     public final static byte CF_IDENTIFY = (byte) 0xEC;
 
-    boolean page;
+    boolean rom_paged;
     byte[] rom;
     byte[] ram;
 
@@ -123,7 +123,7 @@ public class Machine extends MemIoOps {
             if (cfFile != null) {
                 cf = new RandomAccessFile(cfFile, "rw");
 
-                long size = cf.length() / 512;
+                long size = cf.length() >> 9;
                 cfIdentifyBuffer[14] = (byte) (size >> 16);
                 cfIdentifyBuffer[15] = (byte) (size >> 24);
                 cfIdentifyBuffer[16] = (byte) (size);
@@ -170,7 +170,7 @@ public class Machine extends MemIoOps {
     @Override
     public void reset() {
         synchronized (proc) {
-            page = false;
+            rom_paged = true;
             tstates = 0;
             clockTimeNs = 0;
             if (tms9918 != null) {
@@ -185,10 +185,11 @@ public class Machine extends MemIoOps {
     public int fetchOpcode(int address) {
         tstates += 4; // 3 clocks to fetch opcode from RAM and 1 execution clock
         clockTimeNs += clockPeriodNs * 4;
-        if (!page && address < rom.length) {
-            return rom[address & 0xFFFF] & 0xff;
+        address &= 0xFFFF;
+        if (rom_paged && address < rom.length) {
+            return rom[address] & 0xff;
         }
-        return ram[address & 0xFFFF] & 0xff;
+        return ram[address] & 0xff;
     }
 
     @Override
@@ -246,7 +247,7 @@ public class Machine extends MemIoOps {
                 return 0;
         }
 
-        return 0xFF;
+        return port & 0xFF;
     }
 
     @Override
@@ -309,13 +310,9 @@ public class Machine extends MemIoOps {
             case CF_SECCOUNT:
                 cfSecCount = (byte) value;
                 break;
+
             case 0x38: // ROM page
-                if ((value & 0xFF) == 0x01) {
-                    page = true;
-                }
-                else {
-                    page = false;
-                }
+                rom_paged = (value & 0xFF) != 0x01;
                 break;
         }
     }
@@ -324,18 +321,20 @@ public class Machine extends MemIoOps {
     public int peek8(int address) {
         tstates += 3; // 3 clocks for read byte from RAM
         clockTimeNs += clockPeriodNs * 3;
-        if (!page && address < rom.length) {
-            return rom[address & 0xFFFF] & 0xff;
+        address &= 0xFFFF;
+        if (rom_paged && address < rom.length) {
+            return rom[address] & 0xff;
         }
-        return ram[address & 0xFFFF] & 0xff;
+        return ram[address] & 0xff;
     }
 
     @Override
     public void poke8(int address, int value) {
         tstates += 3; // 3 clocks for write byte to RAM
         clockTimeNs += clockPeriodNs * 3;
-        if (page || address >= rom.length) {
-            ram[address & 0xFFFF] = (byte) value;
+        address &= 0xFFFF;
+        if (!rom_paged || address >= rom.length) {
+            ram[address] = (byte) value;
         }
     }
 
