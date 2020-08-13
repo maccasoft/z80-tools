@@ -120,7 +120,7 @@ public class Machine extends MemIoOps {
             System.arraycopy(Utility.getSwappedBytes("1.00    "), 0, cfIdentifyBuffer, 46, 8); // Firmware version
             System.arraycopy(Utility.getSwappedBytes("EMULATED CF CARD                        "), 0, cfIdentifyBuffer, 54, 40); // Card model
 
-            if (cfFile != null) {
+            if (cfFile != null && cfFile.exists()) {
                 cf = new RandomAccessFile(cfFile, "rw");
 
                 long size = cf.length() >> 9;
@@ -197,57 +197,61 @@ public class Machine extends MemIoOps {
         tstates += 4; // 4 clocks for read byte from bus
         clockTimeNs += clockPeriodNs * 4;
 
-        if ((port & 0xFF) == tmsRam) {
+        port &= 0xFF;
+
+        if (port == tmsRam) {
             return tms9918.inRam();
         }
-        if ((port & 0xFF) == tmsReg) {
+        if (port == tmsReg) {
             return tms9918.inReg();
         }
 
-        switch (port & 0xFF) {
-            case CF_DATA:
-                if (cfCommand == CF_READ_SEC) {
-                    if (cfDataCount < 512 * cfSecCount) {
-                        cfDataCount++;
-                        try {
-                            if (cf != null) {
-                                return (byte) cf.read();
+        if (cf != null) {
+            switch (port) {
+                case CF_DATA:
+                    if (cfCommand == CF_READ_SEC) {
+                        if (cfDataCount < 512 * cfSecCount) {
+                            cfDataCount++;
+                            try {
+                                if (cf != null) {
+                                    return (byte) cf.read();
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                            return 0x00;
                         }
-                        return 0;
                     }
-                }
-                else if (cfCommand == CF_IDENTIFY) {
-                    if (cfDataCount < cfIdentifyBuffer.length) {
-                        return cfIdentifyBuffer[cfDataCount++];
+                    else if (cfCommand == CF_IDENTIFY) {
+                        if (cfDataCount < cfIdentifyBuffer.length) {
+                            return cfIdentifyBuffer[cfDataCount++];
+                        }
+                        return 0x00;
                     }
-                    return 0;
-                }
-                return 0;
-            case CF_SECCOUNT:
-                return cfSecCount & 0xFF;
-            case CF_STATUS:
-                if (cfCommand == CF_WRITE_SEC || cfCommand == CF_READ_SEC) {
-                    return 0x48; // CF Ready, DRQ
-                }
-                else if (cfCommand == CF_IDENTIFY) {
-                    if (cfDataCount < cfIdentifyBuffer.length) {
+                    return 0x00;
+                case CF_SECCOUNT:
+                    return cfSecCount & 0xFF;
+                case CF_STATUS:
+                    if (cfCommand == CF_WRITE_SEC || cfCommand == CF_READ_SEC) {
                         return 0x48; // CF Ready, DRQ
                     }
-                }
-                return 0x40; // CF Ready
-            case CF_ERROR:
-                return 0x01; // No error
-            case CF_SECTOR:
-            case CF_CYL_LOW:
-            case CF_CYL_HI:
-            case CF_HEAD:
-                return 0;
+                    else if (cfCommand == CF_IDENTIFY) {
+                        if (cfDataCount < cfIdentifyBuffer.length) {
+                            return 0x48; // CF Ready, DRQ
+                        }
+                    }
+                    return 0x40; // CF Ready
+                case CF_ERROR:
+                    return 0x01; // No error
+                case CF_SECTOR:
+                case CF_CYL_LOW:
+                case CF_CYL_HI:
+                case CF_HEAD:
+                    return 0x00;
+            }
         }
 
-        return port & 0xFF;
+        return port;
     }
 
     @Override
@@ -255,64 +259,71 @@ public class Machine extends MemIoOps {
         tstates += 4; // 4 clocks for write byte to bus
         clockTimeNs += clockPeriodNs * 4;
 
-        if ((port & 0xFF) == tmsRam) {
+        port &= 0xFF;
+        value &= 0xFF;
+
+        if (port == tmsRam) {
             tms9918.outRam(value);
         }
-        if ((port & 0xFF) == tmsReg) {
+        if (port == tmsReg) {
             tms9918.outReg(value);
         }
 
-        switch (port & 0xFF) {
-            case CF_DATA:
-                if (cfCommand == CF_WRITE_SEC) {
-                    if (cfDataCount < 512 * cfSecCount) {
-                        cfDataCount++;
+        if (cf != null) {
+            switch (port) {
+                case CF_DATA:
+                    if (cfCommand == CF_WRITE_SEC) {
+                        if (cfDataCount < 512 * cfSecCount) {
+                            cfDataCount++;
+                            try {
+                                if (cf != null) {
+                                    cf.write(value & 0xFF);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    break;
+                case CF_COMMAND:
+                    cfCommand = (byte) value;
+                    if (cfCommand == CF_WRITE_SEC || cfCommand == CF_READ_SEC) {
                         try {
+                            long addr = ((cfLBA[3] & 0x0F) << 24) | ((cfLBA[2] & 0xFF) << 16) | ((cfLBA[1] & 0xFF) << 8) | (cfLBA[0] & 0xFF);
                             if (cf != null) {
-                                cf.write(value & 0xFF);
+                                cf.seek(addr << 9);
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+                        cfDataCount = 0;
                     }
-                }
-                break;
-            case CF_COMMAND:
-                cfCommand = (byte) value;
-                if (cfCommand == CF_WRITE_SEC || cfCommand == CF_READ_SEC) {
-                    try {
-                        long addr = ((cfLBA[3] & 0x0F) << 24) | ((cfLBA[2] & 0xFF) << 16) | ((cfLBA[1] & 0xFF) << 8) | (cfLBA[0] & 0xFF);
-                        if (cf != null) {
-                            cf.seek(addr << 9);
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    else if (cfCommand == CF_IDENTIFY) {
+                        cfDataCount = 0;
                     }
-                    cfDataCount = 0;
+                    break;
+                case CF_LBA0:
+                    cfLBA[0] = (byte) value;
+                    break;
+                case CF_LBA1:
+                    cfLBA[1] = (byte) value;
+                    break;
+                case CF_LBA2:
+                    cfLBA[2] = (byte) value;
+                    break;
+                case CF_LBA3: {
+                    cfLBA[3] = (byte) value;
+                    break;
                 }
-                else if (cfCommand == CF_IDENTIFY) {
-                    cfDataCount = 0;
-                }
-                break;
-            case CF_LBA0:
-                cfLBA[0] = (byte) value;
-                break;
-            case CF_LBA1:
-                cfLBA[1] = (byte) value;
-                break;
-            case CF_LBA2:
-                cfLBA[2] = (byte) value;
-                break;
-            case CF_LBA3: {
-                cfLBA[3] = (byte) value;
-                break;
+                case CF_SECCOUNT:
+                    cfSecCount = (byte) value;
+                    break;
             }
-            case CF_SECCOUNT:
-                cfSecCount = (byte) value;
-                break;
+        }
 
+        switch (port) {
             case 0x38: // ROM page
-                rom_paged = (value & 0xFF) != 0x01;
+                rom_paged = value != 0x01;
                 break;
         }
     }
