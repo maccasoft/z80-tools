@@ -63,6 +63,7 @@ public class SourceViewer {
     SourceMap sourceMap;
 
     boolean showLineNumbers = true;
+    boolean highlighCurrentLine = true;
 
     private final CaretListener caretListener = new CaretListener() {
 
@@ -74,7 +75,7 @@ public class SourceViewer {
                 if (currentLine >= 0 && currentLine < text.getLineCount()) {
                     text.setLineBackground(currentLine, 1, null);
                 }
-                text.setLineBackground(line, 1, currentLineBackground);
+                text.setLineBackground(line, 1, highlighCurrentLine ? currentLineBackground : null);
                 currentLine = line;
             }
         }
@@ -122,7 +123,7 @@ public class SourceViewer {
 
         currentLine = 0;
         currentLineBackground = new Color(Display.getDefault(), 232, 242, 254);
-        text.setLineBackground(currentLine, 1, currentLineBackground);
+        text.setLineBackground(currentLine, 1, highlighCurrentLine ? currentLineBackground : null);
 
         updateTokenStyles();
 
@@ -199,7 +200,7 @@ public class SourceViewer {
 
         currentLine = 0;
         this.text.setText(text);
-        this.text.setLineBackground(currentLine, 1, currentLineBackground);
+        this.text.setLineBackground(currentLine, 1, highlighCurrentLine ? currentLineBackground : null);
         tokenMarker.refreshMultilineComments(text);
     }
 
@@ -428,6 +429,11 @@ public class SourceViewer {
     public void resetBreakpoints() {
         codeRuler.resetBreakpoints();
         codeRuler.redraw();
+    }
+
+    public void setHighlighCurrentLine(boolean highlighCurrentLine) {
+        this.highlighCurrentLine = highlighCurrentLine;
+        text.setLineBackground(currentLine, 1, highlighCurrentLine ? currentLineBackground : null);
     }
 
 }

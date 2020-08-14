@@ -99,9 +99,6 @@ import nl.grauw.glass.Source;
 import nl.grauw.glass.SourceBuilder;
 import nl.grauw.glass.directives.Directive;
 import nl.grauw.glass.directives.Include;
-import z80core.MemIoOps;
-import z80core.NotifyOps;
-import z80core.Z80;
 
 public class Application {
 
@@ -131,16 +128,10 @@ public class Application {
     DebugTerminal debugTerminal;
     Emulator emulator;
 
-    TMS9918 tms9918;
     DebugTMS9918 debugTMS9918;
 
-    Z80 proc;
-    MemIoOps memIoOps;
-    SourceMap sourceMap;
-
-    int stepOverPC1;
-    int stepOverPC2;
-    int stepOverSP;
+    Debugger debugger;
+    Thread debuggerThread;
 
     Preferences preferences;
 
@@ -215,74 +206,6 @@ public class Application {
 
     };
 
-    final Runnable stepOverRunnable = new Runnable() {
-
-        @Override
-        public void run() {
-            if (stepOverPC1 == -1) {
-                return;
-            }
-
-            int currentPC = proc.getRegPC();
-            proc.execute();
-
-            if (viewer.isBreakpoint(proc.getRegPC())) {
-                handleStop();
-                return;
-            }
-
-            if (proc.getRegPC() == stepOverPC1 || proc.getRegPC() == stepOverPC2 || (proc.getRegPC() != currentPC && proc.getRegSP() == stepOverSP)) {
-                handleStop();
-                return;
-            }
-
-            display.asyncExec(this);
-        }
-    };
-
-    final Runnable runToLineRunnable = new Runnable() {
-
-        @Override
-        public void run() {
-            if (stepOverPC1 == -1) {
-                return;
-            }
-
-            proc.execute();
-
-            if (viewer.isBreakpoint(proc.getRegPC())) {
-                handleStop();
-                return;
-            }
-
-            if (proc.getRegPC() == stepOverPC1) {
-                handleStop();
-                return;
-            }
-
-            display.asyncExec(this);
-        }
-    };
-
-    final Runnable runCodeRunnable = new Runnable() {
-
-        @Override
-        public void run() {
-            if (stepOverPC1 == -1) {
-                return;
-            }
-
-            proc.execute();
-
-            if (viewer.isBreakpoint(proc.getRegPC())) {
-                handleStop();
-                return;
-            }
-
-            display.asyncExec(this);
-        }
-    };
-
     public Application() {
 
     }
@@ -354,6 +277,7 @@ public class Application {
 
             @Override
             public void widgetDisposed(DisposeEvent e) {
+                debugger.doStop();
                 if (terminal != null) {
                     terminal.dispose();
                     terminal = null;
@@ -2435,209 +2359,50 @@ public class Application {
                         return;
                     }
 
-                    tms9918 = new TMS9918();
-                    if (debugTMS9918 != null) {
-                        debugTMS9918.setTMS9918(tms9918);
-                        debugTMS9918.redraw();
-                    }
-
-                    memIoOps = new MemIoOps(65536) {
-
-                        public final static int SIOA_D = 0x81;
-                        public final static int SIOA_C = 0x80;
-                        public final static int SIOB_D = 0x83;
-                        public final static int SIOB_C = 0x82;
+                    debugger = new Debugger(out) {
 
                         @Override
                         public void poke8(int address, int value) {
-                            memory.poke(address, value);
+                            display.syncExec(new Runnable() {
+
+                                @Override
+                                public void run() {
+                                    memory.poke(address, value);
+                                }
+                            });
                             super.poke8(address, value);
                         }
 
                         @Override
-                        public int inPort(int port) {
-                            switch (port & 0xFF) {
-                                case SIOA_C: {
-                                    int result = 0b00101100; // TX Buffer Empty, DCD and CTS
-                                    try {
-                                        if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
-                                            result |= 0x01; // RX Char Available
-                                        }
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                    return result;
-                                }
-                                case SIOA_D: {
-                                    try {
-                                        if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
-                                            return debugTerminal.getInputStream().read();
-                                        }
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                    return 0x00;
-                                }
-                                case SIOB_C:
-                                    return 0b00101100; // TX Buffer Empty, DCD and CTS
-                                case SIOB_D:
-                                    return 0x00;
-                            }
+                        protected void doUpdateDebuggerState() {
+                            super.doUpdateDebuggerState();
+                            display.syncExec(new Runnable() {
 
-                            if ((port & 0xFF) == preferences.getTms9918Ram()) {
-                                return tms9918.inRam();
-                            }
-                            if ((port & 0xFF) == preferences.getTms9918Register()) {
-                                return tms9918.inReg();
-                            }
-
-                            return super.inPort(port);
+                                @Override
+                                public void run() {
+                                    updateDebuggerState();
+                                }
+                            });
                         }
 
                         @Override
-                        public void outPort(int port, int value) {
-                            switch (port & 0xFF) {
-                                case SIOA_D:
-                                    if (debugTerminal != null) {
-                                        debugTerminal.write(value);
-                                    }
-                                    else {
-                                        out.write(value);
-                                    }
-                                    break;
-                                case SIOB_D:
-                                    out.write(value);
-                                    break;
-                            }
-                            if ((port & 0xFF) == preferences.getTms9918Ram()) {
-                                tms9918.outRam(value);
-                            }
-                            if ((port & 0xFF) == preferences.getTms9918Register()) {
-                                tms9918.outReg(value);
-                            }
-                            super.outPort(port, value);
+                        protected boolean isBreakpoint(int address) {
+                            return viewer.isBreakpoint(address);
                         }
 
                     };
-
-                    memIoOps.getRam()[0] = (byte) 0xC3;
-                    memIoOps.getRam()[1] = 0x00;
-                    memIoOps.getRam()[2] = 0x01; // JP 0x100 CP/M TPA
-                    memIoOps.getRam()[5] = (byte) 0xC9; // Return from BDOS call
-
-                    memIoOps.getRam()[8] = (byte) 0xD3; // RST08
-                    memIoOps.getRam()[9] = (byte) 0x81;
-                    memIoOps.getRam()[10] = (byte) 0xC9;
-
-                    proc = new Z80(memIoOps, new NotifyOps() {
-
-                        @Override
-                        public int breakpoint(int address, int opcode) {
-
-                            // Emulate CP/M Syscall at address 5
-                            if (address == 0x0005) {
-                                switch (proc.getRegC()) {
-                                    case 0x00: // BDOS 0 System Reset
-                                        out.println("Z80 reset after " + memIoOps.getTstates() + " t-states");
-                                        break;
-                                    case 0x01: // BDOS 1 console char input
-                                        try {
-                                            if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
-                                                proc.setRegA(debugTerminal.getInputStream().read());
-                                            }
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        break;
-                                    case 0x02: // BDOS 2 console char output
-                                        if (debugTerminal != null) {
-                                            debugTerminal.write(proc.getRegE());
-                                        }
-                                        else {
-                                            out.write(proc.getRegE());
-                                        }
-                                        break;
-                                    case 0x04: // BDOS 4 punch output
-                                    case 0x05: // BDOS 2 list output
-                                        out.write(proc.getRegE());
-                                        break;
-                                    case 0x06: { // BDOS 6 direct console I/O
-                                        if (proc.getRegE() == 0xFF) {
-                                            try {
-                                                if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
-                                                    proc.setRegA(debugTerminal.getInputStream().read());
-                                                }
-                                                else {
-                                                    proc.setRegA(0);
-                                                }
-                                            } catch (Exception e) {
-                                                e.printStackTrace();
-                                            }
-                                        }
-                                        else {
-                                            if (debugTerminal != null) {
-                                                debugTerminal.write(proc.getRegE());
-                                            }
-                                            else {
-                                                out.write(proc.getRegE());
-                                            }
-                                        }
-                                        break;
-                                    }
-                                    case 0x09: { // BDOS 9 console string output (string terminated by "$")
-                                        int strAddr = proc.getRegDE();
-                                        if (debugTerminal != null) {
-                                            while (memIoOps.peek8(strAddr) != '$') {
-                                                debugTerminal.write(memIoOps.peek8(strAddr++));
-                                            }
-                                        }
-                                        else {
-                                            while (memIoOps.peek8(strAddr) != '$') {
-                                                out.write(memIoOps.peek8(strAddr++));
-                                            }
-                                        }
-                                        break;
-                                    }
-                                    case 0x0B: // BDOS 11 console status
-                                        try {
-                                            if (debugTerminal != null && debugTerminal.getInputStream().available() > 0) {
-                                                proc.setRegA(0xFF);
-                                            }
-                                            else {
-                                                proc.setRegA(0x00);
-                                            }
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        break;
-                                    default:
-                                        out.println("BDOS Call " + proc.getRegC());
-                                        break;
-                                }
-
-                                return opcode;
-                            }
-
-                            return opcode;
-                        }
-
-                        @Override
-                        public void execDone() {
-
-                        }
-
-                    });
-                    proc.setBreakpoint(0x0005, true);
-
-                    sourceMap = new SourceMap(source, memIoOps);
-                    sourceMap.build();
+                    debugger.tms9918Ram = preferences.getTms9918Ram();
+                    debugger.tms9918Reg = preferences.getTms9918Register();
 
                     display.syncExec(new Runnable() {
 
                         @Override
                         public void run() {
-                            memory.setData(memIoOps.getRam());
-                            viewer.setSourceMap(sourceMap);
+                            debugger.setSource(source);
+
+                            memory.setData(debugger.getRam());
+                            memory.setSelection(debugger.proc.getRegPC());
+                            viewer.setSourceMap(debugger.getSourceMap());
                             handleReset();
 
                             reparentControls();
@@ -2670,8 +2435,6 @@ public class Application {
 
         reparentControls();
 
-        stepOverPC1 = -1;
-
         stackLayout.topControl = stack.getChildren()[0];
         stack.layout(true, true);
 
@@ -2694,7 +2457,9 @@ public class Application {
     }
 
     private void handleReset() {
-        stepOverPC1 = stepOverPC2 = -1;
+        if (debuggerThread != null) {
+            return;
+        }
 
         if (debugTerminal != null) {
             try {
@@ -2706,104 +2471,84 @@ public class Application {
             }
         }
 
-        tms9918.reset();
-
-        memIoOps.reset();
         memory.clearUpdates();
         viewer.getControl().setFocus();
 
-        proc.setPinReset();
-        proc.reset();
-        proc.setRegPC(sourceMap.getEntryAddress());
-
-        memory.setSelection(sourceMap.getEntryAddress());
+        debugger.reset();
 
         updateDebuggerState();
     }
 
     private void handleStep() {
-        stepOverPC1 = stepOverPC2 = -1;
+        if (debuggerThread != null) {
+            return;
+        }
+
         memory.clearUpdates();
         viewer.getControl().setFocus();
+        viewer.setHighlighCurrentLine(false);
 
-        LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
-        if (lineEntry != null) {
-            stepOverPC1 = proc.getRegPC() + lineEntry.code.length;
-            stepOverPC2 = memIoOps.peek16(proc.getRegSP());
-            stepOverSP = proc.getRegSP();
-            boolean repeat = isRepeatInstruction();
+        debuggerThread = new Thread(new Runnable() {
 
-            proc.execute();
-
-            if (repeat || sourceMap.getLineAtAddress(proc.getRegPC()) == null) {
-                display.asyncExec(stepOverRunnable);
-                return;
+            @Override
+            public void run() {
+                debugger.stepInto();
+                debuggerThread = null;
             }
-        }
-        else {
-            proc.execute();
-        }
 
-        updateDebuggerState();
-    }
-
-    boolean isRepeatInstruction() {
-        int pc = proc.getRegPC();
-        byte[] ram = memIoOps.getRam();
-        if ((ram[pc] & 0xFF) == 0xED) {
-            switch (ram[(pc + 1) & 0xFFFF]) {
-                case (byte) 0xB0: /* LDIR */
-                case (byte) 0xB1: /* CPIR */
-                case (byte) 0xB2: /* INIR */
-                case (byte) 0xB3: /* OTIR */
-                case (byte) 0xB8: /* LDDR */
-                case (byte) 0xB9: /* CPDR */
-                case (byte) 0xBA: /* INDR */
-                case (byte) 0xBB: /* OTDR */
-                    return true;
-            }
-        }
-        return false;
+        });
+        debuggerThread.start();
     }
 
     private void handleStepOver() {
-        stepOverPC1 = stepOverPC2 = -1;
+        if (debuggerThread != null) {
+            return;
+        }
+
         memory.clearUpdates();
         viewer.getControl().setFocus();
+        viewer.setHighlighCurrentLine(false);
 
-        LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
-        if (lineEntry != null) {
-            stepOverPC1 = proc.getRegPC() + lineEntry.code.length;
-            stepOverPC2 = memIoOps.peek16(proc.getRegSP());
-            stepOverSP = proc.getRegSP();
-            display.asyncExec(stepOverRunnable);
-        }
-        else {
-            proc.execute();
-            updateDebuggerState();
-        }
+        debuggerThread = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                debugger.stepOver();
+                debuggerThread = null;
+            }
+
+        });
+        debuggerThread.start();
     }
 
     private void handleRunToLine() {
-        stepOverPC1 = stepOverPC2 = -1;
+        if (debuggerThread != null) {
+            return;
+        }
+
         memory.clearUpdates();
         viewer.getControl().setFocus();
+        viewer.setHighlighCurrentLine(false);
 
         int caretOffset = viewer.getStyledText().getCaretOffset();
         int lineAtOffset = viewer.getStyledText().getLineAtOffset(caretOffset);
 
-        LineEntry lineEntry = viewer.getSourceMap().getLines().get(lineAtOffset);
+        final LineEntry lineEntry = viewer.getSourceMap().getLines().get(lineAtOffset);
 
-        if (lineEntry.address != proc.getRegPC()) {
-            stepOverPC1 = lineEntry.address;
-            display.asyncExec(runToLineRunnable);
-        }
+        debuggerThread = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                debugger.runToAddress(lineEntry.address);
+                debuggerThread = null;
+            }
+
+        });
+        debuggerThread.start();
     }
 
     private void handleStop() {
-        stepOverPC1 = stepOverPC2 = -1;
-        memory.clearUpdates();
-        updateDebuggerState();
+        debugger.doStop();
     }
 
     private void handleToggleBreakpoint() {
@@ -2819,30 +2564,42 @@ public class Application {
 
     private void handleClearBreakpoints() {
         viewer.resetBreakpoints();
-        proc.resetBreakpoints();
+        debugger.resetBreakpoints();
     }
 
     private void handleRun() {
-        stepOverPC1 = 0;
-        stepOverPC2 = -1;
+        if (debuggerThread != null) {
+            return;
+        }
+
         memory.clearUpdates();
         viewer.getControl().setFocus();
+        viewer.setHighlighCurrentLine(false);
 
-        display.asyncExec(runCodeRunnable);
+        debuggerThread = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                debugger.run();
+                debuggerThread = null;
+            }
+
+        });
+        debuggerThread.start();
     }
 
     void updateDebuggerState() {
         memory.update();
-        registers.updateRegisters(proc);
+        registers.updateRegisters(debugger.proc);
 
-        tms9918.redrawFrame();
         if (debugTMS9918 != null) {
             debugTMS9918.redraw();
         }
 
-        LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
+        LineEntry lineEntry = debugger.getSourceMap().getLineAtAddress(debugger.proc.getRegPC());
         if (lineEntry != null) {
             viewer.gotToLineColumn(lineEntry.lineNumber, 0);
+            viewer.setHighlighCurrentLine(true);
         }
     }
 
@@ -2864,7 +2621,7 @@ public class Application {
     private void handleOpenTMS9918Window() {
         if (debugTMS9918 == null) {
             debugTMS9918 = new DebugTMS9918();
-            debugTMS9918.setTMS9918(tms9918);
+            debugTMS9918.setTMS9918(debugger.tms9918);
             debugTMS9918.open();
             debugTMS9918.getShell().addDisposeListener(new DisposeListener() {
 

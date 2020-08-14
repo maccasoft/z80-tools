@@ -11,7 +11,7 @@ package z80core;
  */
 public class MemIoOps {
 
-    private byte[] z80Ram;
+    protected byte[] z80Ram;
 
     protected long tstates = 0;
 
