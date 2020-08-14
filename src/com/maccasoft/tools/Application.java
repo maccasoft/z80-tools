@@ -277,7 +277,9 @@ public class Application {
 
             @Override
             public void widgetDisposed(DisposeEvent e) {
-                debugger.doStop();
+                if (debugger != null) {
+                    debugger.doStop();
+                }
                 if (terminal != null) {
                     terminal.dispose();
                     terminal = null;
@@ -2391,6 +2393,9 @@ public class Application {
                         }
 
                     };
+
+                    debugger.setDebugTerminal(debugTerminal);
+
                     debugger.tms9918Ram = preferences.getTms9918Ram();
                     debugger.tms9918Reg = preferences.getTms9918Register();
 
@@ -2612,8 +2617,14 @@ public class Application {
                 @Override
                 public void widgetDisposed(DisposeEvent e) {
                     debugTerminal = null;
+                    if (debugger != null) {
+                        debugger.setDebugTerminal(debugTerminal);
+                    }
                 }
             });
+            if (debugger != null) {
+                debugger.setDebugTerminal(debugTerminal);
+            }
         }
         debugTerminal.setFocus();
     }
