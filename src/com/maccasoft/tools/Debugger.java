@@ -285,7 +285,7 @@ public class Debugger extends MemIoOps implements NotifyOps {
         else {
             proc.execute();
         }
-        doUpdateDebuggerState();
+        tms9918.redrawFrame();
     }
 
     public void stepInto() {
@@ -315,27 +315,49 @@ public class Debugger extends MemIoOps implements NotifyOps {
         else {
             proc.execute();
         }
-        doUpdateDebuggerState();
+        tms9918.redrawFrame();
     }
 
     public void run() {
-        stop = false;
+        LineEntry lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
+        if (lineEntry != null) {
+            int stepOverPC1 = proc.getRegPC() + lineEntry.code.length;
+            int stepOverPC2 = peek16(proc.getRegSP());
+            int stepOverSP = proc.getRegSP();
 
-        int count = 0;
-        do {
-            proc.execute();
+            stop = false;
+            do {
+                proc.execute();
 
-            if (isBreakpoint(proc.getRegPC())) {
-                break;
+                lineEntry = sourceMap.getLineAtAddress(proc.getRegPC());
+                if (lineEntry != null) {
+                    stepOverPC1 = proc.getRegPC() + lineEntry.code.length;
+                    stepOverPC2 = peek16(proc.getRegSP());
+                    stepOverSP = proc.getRegSP();
+                }
+
+                if (isBreakpoint(proc.getRegPC())) {
+                    break;
+                }
+            } while (!stop);
+
+            if (sourceMap.getLineAtAddress(proc.getRegPC()) == null) {
+                stop = false;
+                do {
+                    int currentPC = proc.getRegPC();
+                    proc.execute();
+
+                    if (isBreakpoint(proc.getRegPC())) {
+                        break;
+                    }
+                    if (proc.getRegPC() == stepOverPC1 || proc.getRegPC() == stepOverPC2 || (proc.getRegPC() != currentPC && proc.getRegSP() == stepOverSP)) {
+                        break;
+                    }
+                } while (!stop);
             }
+        }
 
-            if (count++ >= 16) {
-                doUpdateDebuggerState();
-                count = 0;
-            }
-        } while (!stop);
-
-        doUpdateDebuggerState();
+        tms9918.redrawFrame();
     }
 
     public void runToAddress(int addr) {
@@ -350,16 +372,11 @@ public class Debugger extends MemIoOps implements NotifyOps {
                 break;
             }
         } while (!stop);
-
-        doUpdateDebuggerState();
+        tms9918.redrawFrame();
     }
 
     protected boolean isBreakpoint(int address) {
         return false;
-    }
-
-    protected void doUpdateDebuggerState() {
-        tms9918.redrawFrame();
     }
 
     public void resetBreakpoints() {

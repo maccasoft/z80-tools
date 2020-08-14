@@ -103,7 +103,7 @@ import nl.grauw.glass.directives.Include;
 public class Application {
 
     public static final String APP_TITLE = "Z80 Tools";
-    public static final String APP_VERSION = "1.2.0";
+    public static final String APP_VERSION = "1.2.1";
 
     Display display;
     Shell shell;
@@ -131,7 +131,7 @@ public class Application {
     DebugTMS9918 debugTMS9918;
 
     Debugger debugger;
-    Thread debuggerThread;
+    final AtomicReference<Thread> debuggerThread = new AtomicReference<Thread>();
 
     Preferences preferences;
 
@@ -2376,18 +2376,6 @@ public class Application {
                         }
 
                         @Override
-                        protected void doUpdateDebuggerState() {
-                            super.doUpdateDebuggerState();
-                            display.syncExec(new Runnable() {
-
-                                @Override
-                                public void run() {
-                                    updateDebuggerState();
-                                }
-                            });
-                        }
-
-                        @Override
                         protected boolean isBreakpoint(int address) {
                             return viewer.isBreakpoint(address);
                         }
@@ -2435,6 +2423,17 @@ public class Application {
     }
 
     private void handleSwitchToEditor() {
+        Thread thread = debuggerThread.get();
+        if (thread != null) {
+            debugger.doStop();
+            try {
+                thread.join(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            debuggerThread.set(null);
+        }
+
         Menu menu = shell.getMenuBar();
         menu.getItem(menu.getItemCount() - 2).dispose();
 
@@ -2448,6 +2447,10 @@ public class Application {
             return;
         }
         tabItem.getControl().setFocus();
+
+        if (debugger != null) {
+            debugger = null;
+        }
     }
 
     void reparentControls() {
@@ -2462,7 +2465,7 @@ public class Application {
     }
 
     private void handleReset() {
-        if (debuggerThread != null) {
+        if (debuggerThread.get() != null) {
             return;
         }
 
@@ -2485,7 +2488,7 @@ public class Application {
     }
 
     private void handleStep() {
-        if (debuggerThread != null) {
+        if (debuggerThread.get() != null) {
             return;
         }
 
@@ -2493,20 +2496,30 @@ public class Application {
         viewer.getControl().setFocus();
         viewer.setHighlighCurrentLine(false);
 
-        debuggerThread = new Thread(new Runnable() {
+        Thread thread = new Thread(new Runnable() {
 
             @Override
             public void run() {
                 debugger.stepInto();
-                debuggerThread = null;
+                display.syncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (debugger != null) {
+                            updateDebuggerState();
+                        }
+                    }
+                });
+                debuggerThread.set(null);
             }
 
         });
-        debuggerThread.start();
+        debuggerThread.set(thread);
+        thread.start();
     }
 
     private void handleStepOver() {
-        if (debuggerThread != null) {
+        if (debuggerThread.get() != null) {
             return;
         }
 
@@ -2514,20 +2527,30 @@ public class Application {
         viewer.getControl().setFocus();
         viewer.setHighlighCurrentLine(false);
 
-        debuggerThread = new Thread(new Runnable() {
+        Thread thread = new Thread(new Runnable() {
 
             @Override
             public void run() {
                 debugger.stepOver();
-                debuggerThread = null;
+                display.syncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (debugger != null) {
+                            updateDebuggerState();
+                        }
+                    }
+                });
+                debuggerThread.set(null);
             }
 
         });
-        debuggerThread.start();
+        debuggerThread.set(thread);
+        thread.start();
     }
 
     private void handleRunToLine() {
-        if (debuggerThread != null) {
+        if (debuggerThread.get() != null) {
             return;
         }
 
@@ -2540,16 +2563,26 @@ public class Application {
 
         final LineEntry lineEntry = viewer.getSourceMap().getLines().get(lineAtOffset);
 
-        debuggerThread = new Thread(new Runnable() {
+        Thread thread = new Thread(new Runnable() {
 
             @Override
             public void run() {
                 debugger.runToAddress(lineEntry.address);
-                debuggerThread = null;
+                display.syncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (debugger != null) {
+                            updateDebuggerState();
+                        }
+                    }
+                });
+                debuggerThread.set(null);
             }
 
         });
-        debuggerThread.start();
+        debuggerThread.set(thread);
+        thread.start();
     }
 
     private void handleStop() {
@@ -2573,7 +2606,7 @@ public class Application {
     }
 
     private void handleRun() {
-        if (debuggerThread != null) {
+        if (debuggerThread.get() != null) {
             return;
         }
 
@@ -2581,16 +2614,26 @@ public class Application {
         viewer.getControl().setFocus();
         viewer.setHighlighCurrentLine(false);
 
-        debuggerThread = new Thread(new Runnable() {
+        Thread thread = new Thread(new Runnable() {
 
             @Override
             public void run() {
                 debugger.run();
-                debuggerThread = null;
+                debuggerThread.set(null);
+                display.asyncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (debugger != null) {
+                            updateDebuggerState();
+                        }
+                    }
+                });
             }
 
         });
-        debuggerThread.start();
+        debuggerThread.set(thread);
+        thread.start();
     }
 
     void updateDebuggerState() {
