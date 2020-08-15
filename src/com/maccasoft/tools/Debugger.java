@@ -10,9 +10,13 @@
 
 package com.maccasoft.tools;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.RandomAccessFile;
 
 import com.maccasoft.tools.SourceMap.LineEntry;
+import com.maccasoft.tools.internal.Utility;
 
 import nl.grauw.glass.Source;
 import z80core.MemIoOps;
@@ -29,6 +33,13 @@ public class Debugger extends MemIoOps implements NotifyOps {
     int tms9918Ram;
     int tms9918Reg;
     TMS9918 tms9918;
+
+    byte cfCommand;
+    byte[] cfLBA = new byte[4];
+    byte cfSecCount;
+    RandomAccessFile cf;
+    byte[] cfIdentifyBuffer = new byte[512];
+    int cfDataCount;
 
     boolean stop;
 
@@ -71,6 +82,39 @@ public class Debugger extends MemIoOps implements NotifyOps {
 
     public void setDebugTerminal(DebugTerminal debugTerminal) {
         this.debugTerminal = debugTerminal;
+    }
+
+    public void setCompactFlash(File file) {
+        System.arraycopy("EM-CF-00000001      ".getBytes(), 0, cfIdentifyBuffer, 20, 20); // Serial number
+        System.arraycopy(Utility.getSwappedBytes("1.00    "), 0, cfIdentifyBuffer, 46, 8); // Firmware version
+        System.arraycopy(Utility.getSwappedBytes("EMULATED CF CARD                        "), 0, cfIdentifyBuffer, 54, 40); // Card model
+
+        try {
+            if (file != null && file.exists()) {
+                cf = new RandomAccessFile(file, "rw");
+
+                long size = cf.length() >> 9;
+                cfIdentifyBuffer[14] = (byte) (size >> 16);
+                cfIdentifyBuffer[15] = (byte) (size >> 24);
+                cfIdentifyBuffer[16] = (byte) (size);
+                cfIdentifyBuffer[17] = (byte) (size >> 8);
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void dispose() {
+        stop = true;
+        try {
+            if (cf != null) {
+                cf.close();
+                cf = null;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -125,6 +169,49 @@ public class Debugger extends MemIoOps implements NotifyOps {
             return tms9918.inReg();
         }
 
+        if (cf != null) {
+            switch (port) {
+                case Machine.CF_DATA:
+                    if (cfCommand == Machine.CF_READ_SEC) {
+                        if (cfDataCount < 512 * cfSecCount) {
+                            try {
+                                if (cf != null) {
+                                    return (byte) cf.read();
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    else if (cfCommand == Machine.CF_IDENTIFY) {
+                        if (cfDataCount < cfIdentifyBuffer.length) {
+                            return cfIdentifyBuffer[cfDataCount++];
+                        }
+                        return 0x00;
+                    }
+                    return 0x00;
+                case Machine.CF_SECCOUNT:
+                    return cfSecCount & 0xFF;
+                case Machine.CF_STATUS:
+                    if (cfCommand == Machine.CF_WRITE_SEC || cfCommand == Machine.CF_READ_SEC) {
+                        return 0x48; // CF Ready, DRQ
+                    }
+                    else if (cfCommand == Machine.CF_IDENTIFY) {
+                        if (cfDataCount < cfIdentifyBuffer.length) {
+                            return 0x48; // CF Ready, DRQ
+                        }
+                    }
+                    return 0x40; // CF Ready
+                case Machine.CF_ERROR:
+                    return 0x01; // No error
+                case Machine.CF_SECTOR:
+                case Machine.CF_CYL_LOW:
+                case Machine.CF_CYL_HI:
+                case Machine.CF_HEAD:
+                    return 0x00;
+            }
+        }
+
         return port;
     }
 
@@ -154,6 +241,57 @@ public class Debugger extends MemIoOps implements NotifyOps {
         }
         if (port == tms9918Reg) {
             tms9918.outReg(value);
+        }
+
+        if (cf != null) {
+            switch (port) {
+                case Machine.CF_DATA:
+                    if (cfCommand == Machine.CF_WRITE_SEC) {
+                        if (cfDataCount < 512 * cfSecCount) {
+                            cfDataCount++;
+                            try {
+                                if (cf != null) {
+                                    cf.write(value & 0xFF);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    break;
+                case Machine.CF_COMMAND:
+                    cfCommand = (byte) value;
+                    if (cfCommand == Machine.CF_WRITE_SEC || cfCommand == Machine.CF_READ_SEC) {
+                        try {
+                            long addr = ((cfLBA[3] & 0x0F) << 24) | ((cfLBA[2] & 0xFF) << 16) | ((cfLBA[1] & 0xFF) << 8) | (cfLBA[0] & 0xFF);
+                            if (cf != null) {
+                                cf.seek(addr << 9);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        cfDataCount = 0;
+                    }
+                    else if (cfCommand == Machine.CF_IDENTIFY) {
+                        cfDataCount = 0;
+                    }
+                    break;
+                case Machine.CF_LBA0:
+                    cfLBA[0] = (byte) value;
+                    break;
+                case Machine.CF_LBA1:
+                    cfLBA[1] = (byte) value;
+                    break;
+                case Machine.CF_LBA2:
+                    cfLBA[2] = (byte) value;
+                    break;
+                case Machine.CF_LBA3:
+                    cfLBA[3] = (byte) value;
+                    break;
+                case Machine.CF_SECCOUNT:
+                    cfSecCount = (byte) value;
+                    break;
+            }
         }
     }
 
@@ -255,6 +393,7 @@ public class Debugger extends MemIoOps implements NotifyOps {
 
     @Override
     public void execDone() {
+
     }
 
     public void doStop() {

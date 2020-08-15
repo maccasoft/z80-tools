@@ -89,6 +89,8 @@ public class PreferencesDialog extends Dialog {
     Text tms9918VRam;
     Text tms9918Register;
 
+    Text debuggerCompactFlashImage;
+
     Preferences preferences;
     String defaultFont;
     Font fontBold;
@@ -148,6 +150,7 @@ public class PreferencesDialog extends Dialog {
 
         createGeneralPage(stack);
         createAssemblerPage(stack);
+        createDebuggerPage(stack);
         createEditorPage(stack);
         createEmulatorPage(stack);
         createFormatterPage(stack);
@@ -797,6 +800,61 @@ public class PreferencesDialog extends Dialog {
         tms9918Register.setText(String.format("%02X", preferences.getTms9918Register()));
     }
 
+    void createDebuggerPage(Composite parent) {
+        Composite composite = createPage(parent, "Debugger");
+
+        Label label = new Label(composite, SWT.NONE);
+        label.setText("CF card image");
+        Composite container = new Composite(composite, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        container.setLayout(layout);
+        container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        debuggerCompactFlashImage = new Text(container, SWT.BORDER);
+        debuggerCompactFlashImage.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        if (preferences.getDebuggerCompactFlashImage() != null) {
+            debuggerCompactFlashImage.setText(preferences.getDebuggerCompactFlashImage());
+        }
+
+        Button button = new Button(container, SWT.PUSH);
+        button.setText("Browse");
+        button.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                FileDialog dlg = new FileDialog(getShell(), SWT.OPEN);
+                dlg.setText("Open Compact Flash image");
+                dlg.setFilterNames(new String[] {
+                    "All files",
+                    "Compact Flash images"
+                });
+                dlg.setFilterExtensions(new String[] {
+                    "*.*",
+                    "*.IMG;*.img"
+                });
+
+                String file = debuggerCompactFlashImage.getText();
+                if (!"".equals(file)) {
+                    dlg.setFilterPath(new File(file).getAbsoluteFile().getParent());
+                    if (file.toLowerCase().endsWith(".img")) {
+                        dlg.setFilterIndex(1);
+                    }
+                    else {
+                        dlg.setFilterIndex(0);
+                    }
+                }
+                else {
+                    dlg.setFilterIndex(1);
+                }
+
+                if ((file = dlg.open()) != null) {
+                    debuggerCompactFlashImage.setText(file);
+                }
+            }
+        });
+    }
+
     void addSeparator(Composite parent) {
         Label label = new Label(parent, SWT.NONE);
         label.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false, ((GridLayout) parent.getLayout()).numColumns, 1));
@@ -858,6 +916,8 @@ public class PreferencesDialog extends Dialog {
         preferences.setOpenTMS9918Window(openTMS9918Window.getSelection());
         preferences.setTms9918Ram(Integer.valueOf(tms9918VRam.getText(), 16));
         preferences.setTms9918Register(Integer.valueOf(tms9918Register.getText(), 16));
+
+        preferences.setDebuggerCompactFlashImage(debuggerCompactFlashImage.getText());
 
         super.okPressed();
     }

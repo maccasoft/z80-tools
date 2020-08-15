@@ -2384,6 +2384,11 @@ public class Application {
 
                     debugger.setDebugTerminal(debugTerminal);
 
+                    String s = preferences.getDebuggerCompactFlashImage();
+                    if (s != null && !"".equals(s)) {
+                        debugger.setCompactFlash(new File(s));
+                    }
+
                     debugger.tms9918Ram = preferences.getTms9918Ram();
                     debugger.tms9918Reg = preferences.getTms9918Register();
 
@@ -2449,6 +2454,7 @@ public class Application {
         tabItem.getControl().setFocus();
 
         if (debugger != null) {
+            debugger.dispose();
             debugger = null;
         }
     }

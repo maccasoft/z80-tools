@@ -98,6 +98,8 @@ public class Preferences {
     int tms9918Ram;
     int tms9918Register;
 
+    String debuggerCompactFlashImage;
+
     int lastUploadType;
     String lastPath;
     List<String> lru;
@@ -442,6 +444,14 @@ public class Preferences {
 
     public void setTms9918Register(int tms9918Control) {
         this.tms9918Register = tms9918Control;
+    }
+
+    public String getDebuggerCompactFlashImage() {
+        return debuggerCompactFlashImage;
+    }
+
+    public void setDebuggerCompactFlashImage(String debuggerCompactFlashImage) {
+        this.debuggerCompactFlashImage = debuggerCompactFlashImage;
     }
 
     public void save() throws IOException {
