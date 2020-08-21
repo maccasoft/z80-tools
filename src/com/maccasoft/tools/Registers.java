@@ -39,6 +39,8 @@ public class Registers {
     Text regBC1;
     Text regDE1;
     Text regHL1;
+    Text regIX;
+    Text regIY;
     Text regR;
     Text regI;
 
@@ -176,6 +178,28 @@ public class Registers {
             }
         });
 
+        regIX = createTextEntry(parent, "IX");
+        regIX.addFocusListener(new FocusAdapter() {
+
+            @Override
+            public void focusLost(FocusEvent e) {
+
+            }
+        });
+        label = new Label(parent, SWT.NONE);
+        label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+
+        regIY = createTextEntry(parent, "IY");
+        regIY.addFocusListener(new FocusAdapter() {
+
+            @Override
+            public void focusLost(FocusEvent e) {
+
+            }
+        });
+        label = new Label(parent, SWT.NONE);
+        label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+
         regR = createTextEntry(parent, "R");
         regR.setEditable(false);
         regI = createTextEntry(parent, "I");
@@ -244,6 +268,9 @@ public class Registers {
         regBC1.setText(String.format("%04X", proc.getRegBCx() & 0xFFFF));
         regDE1.setText(String.format("%04X", proc.getRegDEx() & 0xFFFF));
         regHL1.setText(String.format("%04X", proc.getRegHLx() & 0xFFFF));
+
+        regIX.setText(String.format("%04X", proc.getRegIX() & 0xFFFF));
+        regIY.setText(String.format("%04X", proc.getRegIY() & 0xFFFF));
 
         regR.setText(String.format("%02X", proc.getRegR() & 0xFF));
         regI.setText(String.format("%02X", proc.getRegI() & 0xFF));
