@@ -137,6 +137,9 @@ public class CodeRuler {
 
             if (sourceMap != null && lineNumber >= 0 && lineNumber < sourceMap.getLines().size()) {
                 LineEntry line = sourceMap.getLine(lineNumber);
+                if (line.address >= 65536) {
+                    break;
+                }
 
                 StringBuilder sb = new StringBuilder();
                 sb.append(String.format("%04X ", line.address));
