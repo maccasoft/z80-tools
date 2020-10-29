@@ -16,6 +16,7 @@ import java.io.InputStream;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.PaletteData;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
@@ -33,7 +34,17 @@ public class TerminalFont {
         this.height = height;
 
         InputStream is = TerminalFont.class.getResourceAsStream("font" + width + "x" + height + "-1.png");
-        this.imageData = new ImageData(is);
+        ImageData fontImageData = new ImageData(is);
+
+        this.imageData = new ImageData(fontImageData.width, fontImageData.height, 1,
+            new PaletteData(new RGB(0, 0, 0), new RGB(255, 255, 255)));
+        for (int y = 0; y < fontImageData.height; y++) {
+            for (int x = 0; x < fontImageData.width; x++) {
+                int pixel = fontImageData.getPixel(x, y);
+                this.imageData.setPixel(x, y, pixel);
+            }
+        }
+
         try {
             is.close();
         } catch (IOException e) {

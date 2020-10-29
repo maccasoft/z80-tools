@@ -3,15 +3,15 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" output="bin-tests" path="src-tests"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.swt.gtk.linux.x86_64_3.105.2.v20161122-0613.jar" sourcepath="lib/org.eclipse.swt.gtk.linux.x86_64.source_3.105.2.v20161122-0613.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.core.commands_3.7.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.commands.source_3.7.0.v20150422-0725.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding_1.5.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.source_1.5.0.v20150422-0725.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.beans_1.3.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.beans.source_1.3.0.v20150422-0725.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.observable_1.5.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.observable.source_1.5.0.v20150422-0725.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.property_1.5.0.v20150422-0725.jar" sourcepath="lib/org.eclipse.core.databinding.property.source_1.5.0.v20150422-0725.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.equinox.common_3.7.0.v20150402-1709.jar" sourcepath="lib/org.eclipse.equinox.common.source_3.7.0.v20150402-1709.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.jface_3.11.1.v20160128-1644.jar" sourcepath="lib/org.eclipse.jface.source_3.11.1.v20160128-1644.jar"/>
-	<classpathentry kind="lib" path="lib/org.eclipse.jface.databinding_1.7.0.v20150406-2148.jar" sourcepath="lib/org.eclipse.jface.databinding.source_1.7.0.v20150406-2148.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.swt.gtk.linux.x86_64_3.114.100.v20200604-0951.jar" sourcepath="lib/org.eclipse.swt.gtk.linux.x86_64.source_3.114.100.v20200604-0951.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.commands_3.9.700.v20191217-1850.jar" sourcepath="lib/org.eclipse.core.commands.source_3.9.700.v20191217-1850.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding_1.9.0.v20200519-1409.jar" sourcepath="lib/org.eclipse.core.databinding.source_1.9.0.v20200519-1409.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.beans_1.6.100.v20191217-1850.jar" sourcepath="lib/org.eclipse.core.databinding.beans.source_1.6.100.v20191217-1850.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.observable_1.9.0.v20200205-2119.jar" sourcepath="lib/org.eclipse.core.databinding.observable.source_1.9.0.v20200205-2119.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.core.databinding.property_1.8.0.v20200124-0715.jar" sourcepath="lib/org.eclipse.core.databinding.property.source_1.8.0.v20200124-0715.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.equinox.common_3.12.0.v20200504-1602.jar" sourcepath="lib/org.eclipse.equinox.common.source_3.12.0.v20200504-1602.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.jface_3.20.0.v20200505-1952.jar" sourcepath="lib/org.eclipse.jface.source_3.20.0.v20200505-1952.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.jface.databinding_1.11.100.v20200522-1835.jar" sourcepath="lib/org.eclipse.jface.databinding.source_1.11.100.v20200522-1835.jar"/>
 	<classpathentry kind="lib" path="lib/jackson-annotations-2.7.0.jar"/>
 	<classpathentry kind="lib" path="lib/jackson-core-2.7.0.jar"/>
 	<classpathentry kind="lib" path="lib/jackson-databind-2.7.0.jar"/>

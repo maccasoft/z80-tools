@@ -103,7 +103,7 @@ import nl.grauw.glass.directives.Include;
 public class Application {
 
     public static final String APP_TITLE = "Z80 Tools";
-    public static final String APP_VERSION = "1.2.1";
+    public static final String APP_VERSION = "1.3.0";
 
     Display display;
     Shell shell;

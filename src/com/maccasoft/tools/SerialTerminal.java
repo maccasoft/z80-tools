@@ -511,7 +511,7 @@ public class SerialTerminal {
         comPort.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
         comPort.setItems(SerialPortList.getPortNames());
         index = port != null ? comPort.indexOf(port) : -1;
-        if (index == -1) {
+        if (index == -1 && comPort.getItemCount() != 0) {
             index = 0;
             port = comPort.getItem(index);
         }

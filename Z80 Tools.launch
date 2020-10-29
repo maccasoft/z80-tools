@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
-<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
-<listEntry value="/z80-tools/src/com/maccasoft/tools/Application.java"/>
-</listAttribute>
-<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
-<listEntry value="1"/>
-</listAttribute>
-<mapAttribute key="org.eclipse.debug.core.environmentVariables">
-<mapEntry key="UBUNTU_MENUPROXY" value="0"/>
-</mapAttribute>
-<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="com.maccasoft.tools.Application"/>
-<stringAttribute key="org.eclipse.jdt.launching.MODULE_NAME" value="z80-tools"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="z80-tools"/>
+    <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+        <listEntry value="/z80-tools/src/com/maccasoft/tools/Application.java"/>
+    </listAttribute>
+    <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+        <listEntry value="1"/>
+    </listAttribute>
+    <mapAttribute key="org.eclipse.debug.core.environmentVariables">
+        <mapEntry key="UBUNTU_MENUPROXY" value="0"/>
+    </mapAttribute>
+    <listAttribute key="org.eclipse.debug.ui.favoriteGroups">
+        <listEntry value="org.eclipse.debug.ui.launchGroup.run"/>
+    </listAttribute>
+    <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="com.maccasoft.tools.Application"/>
+    <stringAttribute key="org.eclipse.jdt.launching.MODULE_NAME" value="z80-tools"/>
+    <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="z80-tools"/>
 </launchConfiguration>

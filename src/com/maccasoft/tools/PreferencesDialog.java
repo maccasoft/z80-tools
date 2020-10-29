@@ -593,7 +593,7 @@ public class PreferencesDialog extends Dialog {
         container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         romAddress1 = new Text(container, SWT.BORDER);
-        romAddress1.setLayoutData(new GridData(convertWidthInCharsToPixels(5), SWT.DEFAULT));
+        romAddress1.setLayoutData(new GridData(convertWidthInCharsToPixels(6), SWT.DEFAULT));
         romAddress1.setText(String.format("%04X", preferences.getRomAddress1()));
         romAddress1.addFocusListener(new FocusAdapter() {
 
@@ -666,7 +666,7 @@ public class PreferencesDialog extends Dialog {
         container.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         romAddress2 = new Text(container, SWT.BORDER);
-        romAddress2.setLayoutData(new GridData(convertWidthInCharsToPixels(5), SWT.DEFAULT));
+        romAddress2.setLayoutData(new GridData(convertWidthInCharsToPixels(6), SWT.DEFAULT));
         romAddress2.setText(String.format("%04X", preferences.getRomAddress2()));
         romAddress2.addFocusListener(new FocusAdapter() {
 
