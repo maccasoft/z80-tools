@@ -559,7 +559,13 @@ public class Terminal {
                     }
                     else if (argc >= 2) {
                         cy = (args[0] > 0 ? (args[0] - 1) : 0) * font.getHeight();
+                        if (cy > (bounds.height - font.getHeight())) {
+                            cy = (bounds.height / font.getHeight() - 1) * font.getHeight();
+                        }
                         cx = (args[1] > 0 ? (args[1] - 1) : 0) * font.getWidth();
+                        if (cx > (bounds.width - font.getWidth())) {
+                            cx = (bounds.width / font.getWidth() - 1) * font.getWidth();
+                        }
                     }
                     break;
                 case 'J': {
@@ -649,7 +655,7 @@ public class Terminal {
                         writeByte((byte) 'n');
                     }
                     else if (args[0] == 6) {
-                        byte[] b = String.format("%c[%d;%dR", 0x1B, cy, cx).getBytes();
+                        byte[] b = String.format("%c[%d;%dR", 0x1B, (cy / font.getHeight()) + 1, (cx / font.getWidth()) + 1).getBytes();
                         for (int i = 0; i < b.length; i++) {
                             writeByte(b[i]);
                         }

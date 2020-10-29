@@ -10,17 +10,30 @@
 
 package com.maccasoft.tools;
 
+import java.io.ByteArrayOutputStream;
+
 import org.eclipse.swt.widgets.Shell;
 
 public class TerminalTest extends DatabindingTestCase {
 
     Shell shell;
     Terminal term;
+    ByteArrayOutputStream out;
 
     @Override
     protected void setUp() throws Exception {
         shell = createShell();
-        term = new Terminal(shell);
+
+        out = new ByteArrayOutputStream();
+
+        term = new Terminal(shell) {
+
+            @Override
+            protected void writeByte(byte b) {
+                out.write(b);
+            }
+
+        };
     }
 
     @Override
@@ -205,5 +218,24 @@ public class TerminalTest extends DatabindingTestCase {
         term.print("\033[?25h");
 
         assertEquals(Terminal.CURSOR_ON | Terminal.CURSOR_FLASH | Terminal.CURSOR_ULINE, term.cursor);
+    }
+
+    public void testCursorReport() throws Exception {
+        out = new ByteArrayOutputStream();
+        term.print("\033[1;1f\033[6n");
+        assertEquals("\033[1;1R", out.toString());
+
+        out = new ByteArrayOutputStream();
+        term.print("\033[10;1f\033[6n");
+        assertEquals("\033[10;1R", out.toString());
+
+        out = new ByteArrayOutputStream();
+        term.print("\033[1;10f\033[6n");
+        assertEquals("\033[1;10R", out.toString());
+    }
+
+    public void testCursorPositionBounds() throws Exception {
+        term.print("\033[100;100f\033[6n");
+        assertEquals("\033[25;80R", out.toString());
     }
 }
