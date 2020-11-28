@@ -160,7 +160,7 @@
         <pathelement location="lib/jackson-annotations-2.7.0.jar"/>
         <pathelement location="lib/jackson-core-2.7.0.jar"/>
         <pathelement location="lib/jackson-databind-2.7.0.jar"/>
-        <pathelement location="lib/jssc-2.8.0.jar"/>
+        <pathelement location="lib/jssc-2.9.2.jar"/>
     </path>
     
     <target name="copy-common-files">
@@ -183,7 +183,7 @@
             <fileset dir="lib" includes="jackson-annotations-2.7.0.jar"/>
             <fileset dir="lib" includes="jackson-core-2.7.0.jar"/>
             <fileset dir="lib" includes="jackson-databind-2.7.0.jar"/>
-            <fileset dir="lib" includes="jssc-2.8.0.jar"/>
+            <fileset dir="lib" includes="jssc-2.9.2.jar"/>
         </copy>
 
         <copy todir="${work}/${folder}/examples">
